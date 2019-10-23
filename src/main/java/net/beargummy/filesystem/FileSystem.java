@@ -13,6 +13,10 @@ public interface FileSystem {
      *
      * @param name file name
      * @return {@link File} instance
+     * @throws NullPointerException     if file name is {@code null}.
+     * @throws IllegalArgumentException if file name is empty string.
+     * @throws FileAlreadyExists        if file already exists.
+     * @throws IOException              if an I/O error occurs.
      */
     public File createFile(String name) throws IOException;
 
@@ -20,8 +24,11 @@ public interface FileSystem {
      * Delete {@link File file} with given file name.
      *
      * @param name file name
-     * @return {@code true} if delete was successful, {@code false} otherwise
+     * @throws NullPointerException     if file name is {@code null}.
+     * @throws IllegalArgumentException if file name is empty string.
+     * @throws NoSuchFileException      if the file does not exist.
+     * @throws IOException              if an I/O error occurs.
      */
-    public boolean deleteFile(String name);
+    public void deleteFile(String name) throws IOException;
 
 }

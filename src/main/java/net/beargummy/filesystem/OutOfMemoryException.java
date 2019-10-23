@@ -1,13 +1,19 @@
 package net.beargummy.filesystem;
 
-import java.io.IOException;
+public class OutOfMemoryException extends RuntimeException {
 
-public class OutOfMemoryException extends IOException {
-
-    public OutOfMemoryException() {
+    OutOfMemoryException() {
     }
 
-    public OutOfMemoryException(String message) {
+    OutOfMemoryException(String message) {
         super(message);
+    }
+
+    OutOfMemoryException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    OutOfMemoryException(Throwable cause) {
+        super(cause);
     }
 }

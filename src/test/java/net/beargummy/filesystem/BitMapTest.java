@@ -54,4 +54,20 @@ public class BitMapTest {
                 .as("deserialized size")
                 .isEqualTo(deserialized.size());
     }
+
+    @Test
+    public void should_not_allocate_more_than_size() {
+        BitMap bitMap = new BitMap(2);
+        assertThat(bitMap.allocate())
+                .as("first allocation")
+                .isEqualTo(0);
+
+        assertThat(bitMap.allocate())
+                .as("second allocation")
+                .isEqualTo(1);
+
+        assertThat(bitMap.allocate())
+                .as("third allocation")
+                .isEqualTo(-1);
+    }
 }

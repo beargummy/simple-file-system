@@ -12,7 +12,7 @@ enum FileType {
         this.code = code;
     }
 
-    public static FileType valueOf(int code) {
+    static FileType valueOf(int code) {
         for (FileType value : values()) {
             if (value.code == code) {
                 return value;
@@ -21,7 +21,7 @@ enum FileType {
         return null;
     }
 
-    public int getCode() {
+    int getCode() {
         return code;
     }
 }

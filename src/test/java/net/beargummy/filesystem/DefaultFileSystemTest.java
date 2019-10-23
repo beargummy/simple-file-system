@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class DefaultFileSystemTest {
 
@@ -18,9 +19,9 @@ public class DefaultFileSystemTest {
         java.io.File file = java.io.File.createTempFile("DefaultFileSystemTest", "tmp");
         file.deleteOnExit();
         DefaultFileSystem defaultFileSystem = new DefaultFileSystem(
+                4,
                 8,
-                56,
-                new SingleFileBlockStorage(new RandomAccessFile(file, "rw"), 4 * 1024, 64) // in-memory just for test sake
+                new SingleFileBlockStorage(new RandomAccessFile(file, "rw"), 4 * 1024, 64)
         );
         defaultFileSystem.initFileSystem();
         this.defaultFileSystem = defaultFileSystem;
@@ -61,7 +62,47 @@ public class DefaultFileSystemTest {
     }
 
     @Test
+    public void should_not_allow_create_already_created_file() throws IOException {
+        File file = defaultFileSystem.createFile("foo");
+        assertThatThrownBy(() -> defaultFileSystem.createFile("foo"), "calling double create")
+                .as("double creation file exception")
+                .isInstanceOf(IllegalArgumentException.class)
+                .as("double creation file exception")
+                .hasMessageContaining("foo");
+    }
+
+    @Test
     public void should_delete_file() throws IOException {
         File file = defaultFileSystem.createFile("foo");
+        assertThatThrownBy(() -> defaultFileSystem.createFile("foo"), "calling double create");
+        defaultFileSystem.deleteFile("foo");
+
+        File fileAgain = defaultFileSystem.createFile("foo");
+    }
+
+    @Test
+    public void should_fail_on_wrong_file_name() {
+        assertThatThrownBy(() -> defaultFileSystem.createFile(null), "null file name")
+                .as("null file name exception")
+                .isInstanceOf(NullPointerException.class);
+
+        assertThatThrownBy(() -> defaultFileSystem.createFile("  "), "empty file name")
+                .as("empty file name exception")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    public void should_throw_out_of_memory_when_no_allocation_blocks() throws IOException {
+        for (int i = 0; i < 7; i++) {
+            File file = defaultFileSystem.createFile("foo" + i);
+            byte[] data = "Some data".getBytes();
+            file.write(data);
+        }
+
+        assertThatThrownBy(() -> {
+            File file = defaultFileSystem.createFile("foo7");
+            byte[] data = "Some data".getBytes();
+            file.write(data);
+        }, "calling double create");
     }
 }

@@ -2,7 +2,6 @@ package net.beargummy.filesystem;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 
 class DefaultFileSystem implements FileSystem {
 
@@ -22,10 +21,9 @@ class DefaultFileSystem implements FileSystem {
     private BitMap indexNodeBitMap;
     private BitMap dataNodeBitMap;
 
-    private INode rootNode;
     private Directory rootDirectory;
 
-    DefaultFileSystem(int numINodes, int numDNodes, BlockStorage blockStorage) throws IOException {
+    DefaultFileSystem(int numINodes, int numDNodes, BlockStorage blockStorage) {
         this.numINodes = numINodes;
         this.numDNodes = numDNodes;
 
@@ -40,19 +38,17 @@ class DefaultFileSystem implements FileSystem {
         blockStorage.writeBlock(byteBuffer.array(), SUPER_BLOCK_NUMBER);
 
         indexNodeBitMap = new BitMap(numINodes);
+        int rootINodeNumber = indexNodeBitMap.allocate();
         indexNodeBitMap.serialize(byteBuffer.rewind());
         blockStorage.writeBlock(byteBuffer.array(), I_NODE_BIT_MAP_BLOCK_NUMBER);
 
         dataNodeBitMap = new BitMap(numDNodes);
+        int rootDNodeNumber = dataNodeBitMap.allocate();
         dataNodeBitMap.serialize(byteBuffer.rewind());
-        int rootNodeDataIndex = dataNodeBitMap.allocate();
         blockStorage.writeBlock(byteBuffer.array(), DATA_NODE_BIT_MAP_BLOCK_NUMBER);
 
-        rootNode = new INode(superBlock.getRootIndexNodeOffset(), FileType.DIRECTORY, 0, rootNodeDataIndex);
-        writeINode(rootNode);
-
-        rootDirectory = new Directory(0, new ArrayList<>());
-        writeDirectory(rootDirectory);
+        rootDirectory = new Directory(this, rootINodeNumber, rootDNodeNumber);
+        writeINode(rootDirectory.getINode());
     }
 
     void restoreFileSystem() throws IOException {
@@ -67,56 +63,43 @@ class DefaultFileSystem implements FileSystem {
         blockStorage.readBlock(byteBuffer.array(), DATA_NODE_BIT_MAP_BLOCK_NUMBER);
         dataNodeBitMap = new BitMap(byteBuffer);
 
-        rootNode = readINode(superBlock.getRootIndexNodeOffset());
-
-        rootDirectory = readDirectory();
+        rootDirectory = new Directory(this, readINode(0));
     }
 
     @Override
     public File createFile(String name) throws IOException {
-        return create(name, 0);
-    }
+        assertFileNameNotEmpty(name);
 
-    public File create(String name, int size) throws IOException {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("File name cannot be empty");
-        }
-        if (size < 0) {
-            throw new IllegalArgumentException("File size cannot be negative");
-        } else if (size >= blockStorage.getBlockSize()) {
-            // todo: implement multi-block files
-            throw new IllegalArgumentException("File size cannot be bigger than block size");
-        }
-
-        if (rootDirectory.getContent().size() > 80) {
-            throw new IllegalArgumentException("Cannot create new file in directory {}");
-        }
-
-        if (rootDirectory.getContent().stream().anyMatch(directoryData -> name.equals(directoryData.name))) {
-            throw new IllegalArgumentException("File name [" + name + "] already created");
+        if (rootDirectory.containsFile(name)) {
+            throw new IllegalArgumentException("File name already created: " + name);
         }
 
         int indexNodeNumber = indexNodeBitMap.allocate();
-        INode fileINode = new INode(indexNodeNumber, FileType.FILE, size, -1);
-        rootDirectory.addFile(name, indexNodeNumber);
+        INode fileINode = new INode(indexNodeNumber, FileType.FILE, 0, -1);
         writeINode(fileINode);
-        writeDirectory(rootDirectory);
+        rootDirectory.addFile(name, indexNodeNumber);
 
-        return new DefaultFile(this, name, fileINode, -1, size);
+        return new DefaultFile(this, name, indexNodeNumber, -1, 0);
     }
 
-    public boolean deleteFile(String name) {
-        // todo: implement
-        return false;
+    @Override
+    public void deleteFile(String name) throws IOException {
+        assertFileNameNotEmpty(name);
+
+        if (!rootDirectory.containsFile(name)) {
+            throw new NoSuchFileException("File does not exist: " + name);
+        }
+
+        rootDirectory.deleteFile(name);
     }
 
-    private Directory readDirectory() {
-        // todo: implement
-        return null;
-    }
-
-    private void writeDirectory(Directory directory) {
-        // todo: implement
+    private static void assertFileNameNotEmpty(String name) {
+        if (name == null) {
+            throw new NullPointerException("File name cannot be null");
+        }
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("File name cannot be empty");
+        }
     }
 
     private INode readINode(int iNodeIndex) throws IOException {
@@ -130,10 +113,10 @@ class DefaultFileSystem implements FileSystem {
     }
 
     private void writeINode(INode iNode) throws IOException {
-        int iNodeOffset = (iNode.iNodeNumber * INode.SIZE) / blockStorage.getBlockSize();
-        int iNodeBlock = iNodeOffset + I_NODES_START_INDEX;
+        int iNodeBlock = ((iNode.getINodeNumber() * INode.SIZE) / blockStorage.getBlockSize()) + I_NODES_START_INDEX;
+        int iNodeOffset = (iNode.getINodeNumber() * INode.SIZE) % blockStorage.getBlockSize();
         ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
-        iNode.serialize(byteBuffer);
+        iNode.writeTo(byteBuffer);
         blockStorage.writeBlock(byteBuffer.array(), iNodeBlock, iNodeOffset);
     }
 
@@ -141,18 +124,27 @@ class DefaultFileSystem implements FileSystem {
         return blockStorage.getBlockSize();
     }
 
-    void writeFile(DefaultFile file, byte[] data, int offset) throws IOException {
-        if (file.getDataBlock() == -1) {
-            int dataBlock = dataNodeBitMap.allocate();
-            if (dataBlock == -1) {
-                throw new OutOfMemoryException("Not enough space to write to file " + file.name);
-            }
-            file.setDataBlock(dataBlock);
+    void readINodeData(INode iNode, byte[] buffer, int offset) throws IOException {
+        if (null == buffer) {
+            throw new NullPointerException("Buffer is null");
         }
-        blockStorage.writeBlock(data, DATA_NODES_START_INDEX + file.getDataBlock(), offset);
+        blockStorage.readBlock(buffer, DATA_NODES_START_INDEX + iNode.getDataBlock(), offset);
     }
 
-    void read(DefaultFile defaultFile, byte[] buffer, int offset) throws IOException {
-        blockStorage.readBlock(buffer, DATA_NODES_START_INDEX + defaultFile.getDataBlock(), offset);
+    void writeINodeData(INode iNode, byte[] data, int offset) throws IOException {
+        if (null == data) {
+            throw new NullPointerException("Data is null");
+        }
+        if (data.length + offset > blockStorage.getBlockSize()) {
+            throw new IllegalArgumentException("Data length is greater than block size " + blockStorage.getBlockSize());
+        }
+        if (iNode.getDataBlock() == -1) {
+            int dataBlock = dataNodeBitMap.allocate();
+            if (dataBlock == -1) {
+                throw new OutOfMemoryException("Not enough space to write");
+            }
+            iNode.assignDataBlock(dataBlock);
+        }
+        blockStorage.writeBlock(data, DATA_NODES_START_INDEX + iNode.getDataBlock(), offset);
     }
 }

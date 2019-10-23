@@ -4,33 +4,67 @@ import java.nio.ByteBuffer;
 
 class INode {
 
-    public static final int SIZE = 4 * 4;
+    static final int SIZE = 4 * 4;
 
-    int iNodeNumber;
+    private int iNodeNumber;
+    private FileType type;
+    private int dataBlock;
+    private int size;
 
-    FileType type;
-    int size;
-    int block;
-
-    public INode(int indexNodeNumber, FileType fileType, int size, int block) {
+    INode(int indexNodeNumber, FileType fileType, int size, int block) {
         this.iNodeNumber = indexNodeNumber;
         this.type = fileType;
+        this.dataBlock = block;
         this.size = size;
-        this.block = block;
     }
 
-    public INode(ByteBuffer byteBuffer) {
+    INode(ByteBuffer byteBuffer) {
         this.type = FileType.valueOf(byteBuffer.getInt());
         this.size = byteBuffer.getInt();
-
-        this.block = byteBuffer.getInt();
+        this.dataBlock = byteBuffer.getInt();
     }
 
-    public void serialize(ByteBuffer byteBuffer) {
+    int getDataBlock() {
+        return dataBlock;
+    }
+
+    void assignDataBlock(int dataBlock) {
+        this.dataBlock = dataBlock;
+    }
+
+    public void writeTo(ByteBuffer byteBuffer) {
         byteBuffer
                 .putInt(type.getCode())
                 .putInt(size)
-                .putInt(block);
+                .putInt(dataBlock);
+    }
+
+    int getINodeNumber() {
+        return iNodeNumber;
+    }
+
+    void setINodeNumber(int iNodeNumber) {
+        this.iNodeNumber = iNodeNumber;
+    }
+
+    FileType getType() {
+        return type;
+    }
+
+    void setType(FileType type) {
+        this.type = type;
+    }
+
+    void setDataBlock(int dataBlock) {
+        this.dataBlock = dataBlock;
+    }
+
+    int getSize() {
+        return size;
+    }
+
+    void setSize(int size) {
+        this.size = size;
     }
 
     @Override
@@ -39,7 +73,8 @@ class INode {
                 "iNodeNumber=" + iNodeNumber +
                 ", type=" + type +
                 ", size=" + size +
-                ", block=" + block +
+                ", block=" + dataBlock +
                 '}';
     }
+
 }

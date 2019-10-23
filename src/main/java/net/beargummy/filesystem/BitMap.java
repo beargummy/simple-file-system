@@ -27,6 +27,9 @@ class BitMap {
     }
 
     int allocate() {
+        if (numFree() == 0) {
+            return -1;
+        }
         int index = bitSet.nextClearBit(0);
         if (index >= 0) {
             bitSet.set(index);

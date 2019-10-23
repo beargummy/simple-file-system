@@ -2,7 +2,7 @@ package net.beargummy.filesystem;
 
 import java.io.IOException;
 
-interface BlockStorage {
+public interface BlockStorage {
 
     /**
      * Reads up to {@code buffer.length} bytes of block data into an array of bytes.

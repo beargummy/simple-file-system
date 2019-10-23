@@ -2,19 +2,20 @@ package net.beargummy.filesystem;
 
 import java.nio.ByteBuffer;
 
+// todo: start using it or remove it :)
 class SuperBlock {
 
     private final int rootIndexNodeOffset;
 
-    public SuperBlock(ByteBuffer byteBuffer) {
+    SuperBlock(ByteBuffer byteBuffer) {
         rootIndexNodeOffset = byteBuffer.getInt();
     }
 
-    public SuperBlock(int rootIndexNodeOffset) {
+    SuperBlock(int rootIndexNodeOffset) {
         this.rootIndexNodeOffset = rootIndexNodeOffset;
     }
 
-    public int getRootIndexNodeOffset() {
+    int getRootIndexNodeOffset() {
         return rootIndexNodeOffset;
     }
 

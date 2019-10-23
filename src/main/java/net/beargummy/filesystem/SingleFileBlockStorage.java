@@ -12,7 +12,7 @@ class SingleFileBlockStorage implements BlockStorage {
     private final int blockSize;
     private final int blockCount;
 
-    public SingleFileBlockStorage(RandomAccessFile file, int blockSize, int blockCount) {
+    SingleFileBlockStorage(RandomAccessFile file, int blockSize, int blockCount) {
         this.file = file;
         this.blockSize = blockSize;
         this.blockCount = blockCount;

@@ -2,6 +2,12 @@ package net.beargummy.filesystem;
 
 import java.io.IOException;
 
+/**
+ * Represents a file on FileSystem.
+ * <p>
+ * Supports methods to access it's content.
+ * For a file management {@link FileSystem} should be used instead.
+ */
 public interface File {
 
     /**
@@ -9,6 +15,7 @@ public interface File {
      *
      * @return file name
      */
+    // todo: remove?
     public String getName();
 
     /**

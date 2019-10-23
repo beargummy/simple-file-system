@@ -5,18 +5,13 @@ import java.io.IOException;
 class DefaultFile implements File {
 
     private final DefaultFileSystem fs;
+    private INode iNode;
+    private String name;
 
-    String name;
-    INode iNode;
-    private int dataBlock;
-    int size;
-
-    public DefaultFile(DefaultFileSystem fs, String name, INode iNode, int dataBlock, int size) {
+    DefaultFile(DefaultFileSystem fs, String name, int iNodeNumber, int dataBlock, int size) {
         this.fs = fs;
         this.name = name;
-        this.iNode = iNode;
-        this.setDataBlock(dataBlock);
-        this.size = size;
+        this.iNode = new INode(iNodeNumber, FileType.FILE, size, dataBlock);
     }
 
     @Override
@@ -31,14 +26,11 @@ class DefaultFile implements File {
 
     @Override
     public void read(byte[] buffer, int offset) throws IOException {
-        if (null == buffer) {
-            throw new NullPointerException("data is null");
-        }
-        if (dataBlock == -1) {
-            // todo: throw or return empty array
+        if (iNode.getDataBlock() == -1) {
+            // todo: throw or return with empty array ?
             return;
         }
-        fs.read(this, buffer, offset);
+        fs.readINodeData(iNode, buffer, offset);
     }
 
     @Override
@@ -48,37 +40,13 @@ class DefaultFile implements File {
 
     @Override
     public void write(byte[] data, int offset) throws IOException {
-        if (null == data) {
-            throw new NullPointerException("data is null");
-        }
-        if (data.length > fs.getBlockSize()) {
-            throw new IllegalArgumentException("data length is greater than block size " + fs.getBlockSize());
-        }
-        fs.writeFile(this, data, offset);
-        size += data.length;
+        fs.writeINodeData(iNode, data, offset);
+        iNode.setSize(iNode.getSize() + data.length);
     }
 
     @Override
     public int getFileSize() {
-        return size;
+        return iNode.getSize();
     }
 
-    @Override
-    public String toString() {
-        return "DefaultFile{" +
-                "fs=" + fs +
-                ", name='" + name + '\'' +
-                ", iNode=" + iNode +
-                ", dataBlock=" + getDataBlock() +
-                ", size=" + size +
-                '}';
-    }
-
-    protected int getDataBlock() {
-        return dataBlock;
-    }
-
-    protected void setDataBlock(int dataBlock) {
-        this.dataBlock = dataBlock;
-    }
 }

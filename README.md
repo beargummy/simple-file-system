@@ -1,5 +1,7 @@
 # Simple single-file-based filesystem.
 
+[![Build Status](https://travis-ci.com/beargummy/simple-file-system.svg?branch=master)](https://travis-ci.com/beargummy/simple-file-system)
+
 Simple single-file-backed file system that supports basic file operations 
 like create, write content, read content, delete.
 

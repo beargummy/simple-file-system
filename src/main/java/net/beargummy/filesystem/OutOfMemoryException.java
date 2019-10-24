@@ -1,9 +1,9 @@
 package net.beargummy.filesystem;
 
+/**
+ * Signals that attempt to write data to the file system fails due to lack of memory on underlying storage.
+ */
 public class OutOfMemoryException extends RuntimeException {
-
-    OutOfMemoryException() {
-    }
 
     OutOfMemoryException(String message) {
         super(message);
@@ -13,7 +13,4 @@ public class OutOfMemoryException extends RuntimeException {
         super(message, cause);
     }
 
-    OutOfMemoryException(Throwable cause) {
-        super(cause);
-    }
 }

@@ -8,10 +8,10 @@ class DefaultFile implements File {
     private INode iNode;
     private String name;
 
-    DefaultFile(DefaultFileSystem fs, String name, int iNodeNumber, int dataBlock, int size) {
+    public DefaultFile(DefaultFileSystem fs, String name, INode iNode) {
         this.fs = fs;
         this.name = name;
-        this.iNode = new INode(iNodeNumber, FileType.FILE, size, dataBlock);
+        this.iNode = iNode;
     }
 
     @Override
@@ -42,6 +42,7 @@ class DefaultFile implements File {
     public void write(byte[] data, int offset) throws IOException {
         fs.writeINodeData(iNode, data, offset);
         iNode.setSize(iNode.getSize() + data.length);
+        fs.writeINode(iNode);
     }
 
     @Override

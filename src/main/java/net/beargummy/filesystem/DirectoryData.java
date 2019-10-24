@@ -71,8 +71,8 @@ class DirectoryData {
         void serialize(ByteBuffer byteBuffer) {
             byteBuffer
                     .putInt(recordType.getCode())
-                    .putInt(iNodeNumber)
                     .putInt(recordSize)
+                    .putInt(iNodeNumber)
                     .putInt(nameSize);
             if (nameSize > 0) {
                 byteBuffer.put(name.getBytes());

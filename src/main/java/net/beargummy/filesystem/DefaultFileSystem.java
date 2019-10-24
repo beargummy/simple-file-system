@@ -8,8 +8,10 @@ class DefaultFileSystem implements FileSystem {
     private static final int SUPER_BLOCK_NUMBER = 0;
     private static final int I_NODE_BIT_MAP_BLOCK_NUMBER = 1;
     private static final int DATA_NODE_BIT_MAP_BLOCK_NUMBER = 2;
-    private static final int I_NODES_START_INDEX = 3;
-    private static final int DATA_NODES_START_INDEX = 4;
+    private static final int ALWAYS_OCCUPIED_BLOCKS = 3;
+
+    private int iNodesStartIndex;
+    private int dataNodesStartIndex;
 
     private final int numINodes;
     private final int numDNodes;
@@ -23,9 +25,18 @@ class DefaultFileSystem implements FileSystem {
 
     private Directory rootDirectory;
 
-    DefaultFileSystem(int numINodes, int numDNodes, BlockStorage blockStorage) {
-        this.numINodes = numINodes;
-        this.numDNodes = numDNodes;
+    DefaultFileSystem(BlockStorage blockStorage) {
+        this(1, blockStorage);
+    }
+
+    DefaultFileSystem(int blocksPerInodeRatio, BlockStorage blockStorage) {
+        this.numINodes = blockStorage.getBlocksCount() / blocksPerInodeRatio;
+
+        this.iNodesStartIndex = ALWAYS_OCCUPIED_BLOCKS;
+        int iNodeBlocks = (int) Math.ceil((double) numINodes * INode.SIZE / blockStorage.getBlockSize());
+
+        this.dataNodesStartIndex = iNodesStartIndex + iNodeBlocks;
+        this.numDNodes = blockStorage.getBlocksCount() - dataNodesStartIndex;
 
         this.blockStorage = blockStorage;
     }
@@ -79,18 +90,31 @@ class DefaultFileSystem implements FileSystem {
         writeINode(fileINode);
         rootDirectory.addFile(name, indexNodeNumber);
 
-        return new DefaultFile(this, name, indexNodeNumber, -1, 0);
+        return new DefaultFile(this, name, fileINode);
+    }
+
+    @Override
+    public File openFile(String name) throws IOException {
+        assertFileNameNotEmpty(name);
+        assertFileExists(name);
+
+        int fileINodeNumber = rootDirectory.getFileINodeNumber(name);
+        INode fileINode = readINode(fileINodeNumber);
+        return new DefaultFile(this, name, fileINode);
     }
 
     @Override
     public void deleteFile(String name) throws IOException {
         assertFileNameNotEmpty(name);
-
-        if (!rootDirectory.containsFile(name)) {
-            throw new NoSuchFileException("File does not exist: " + name);
-        }
+        assertFileExists(name);
 
         rootDirectory.deleteFile(name);
+    }
+
+    private void assertFileExists(String name) throws IOException {
+        if (!rootDirectory.containsFile(name)) {
+            throw new FileNotFoundException("File does not exist: " + name);
+        }
     }
 
     private static void assertFileNameNotEmpty(String name) {
@@ -102,9 +126,9 @@ class DefaultFileSystem implements FileSystem {
         }
     }
 
-    private INode readINode(int iNodeIndex) throws IOException {
-        int iNodeOffset = (iNodeIndex * INode.SIZE) / blockStorage.getBlockSize();
-        int iNodeBlock = iNodeOffset + I_NODES_START_INDEX;
+    INode readINode(int iNodeIndex) throws IOException {
+        int iNodeBlock = ((iNodeIndex * INode.SIZE) / blockStorage.getBlockSize()) + iNodesStartIndex;
+        int iNodeOffset = (iNodeIndex * INode.SIZE) % blockStorage.getBlockSize();
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
 
@@ -112,23 +136,19 @@ class DefaultFileSystem implements FileSystem {
         return new INode(byteBuffer);
     }
 
-    private void writeINode(INode iNode) throws IOException {
-        int iNodeBlock = ((iNode.getINodeNumber() * INode.SIZE) / blockStorage.getBlockSize()) + I_NODES_START_INDEX;
+    void writeINode(INode iNode) throws IOException {
+        int iNodeBlock = ((iNode.getINodeNumber() * INode.SIZE) / blockStorage.getBlockSize()) + iNodesStartIndex;
         int iNodeOffset = (iNode.getINodeNumber() * INode.SIZE) % blockStorage.getBlockSize();
         ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
         iNode.writeTo(byteBuffer);
         blockStorage.writeBlock(byteBuffer.array(), iNodeBlock, iNodeOffset);
     }
 
-    int getBlockSize() {
-        return blockStorage.getBlockSize();
-    }
-
     void readINodeData(INode iNode, byte[] buffer, int offset) throws IOException {
         if (null == buffer) {
             throw new NullPointerException("Buffer is null");
         }
-        blockStorage.readBlock(buffer, DATA_NODES_START_INDEX + iNode.getDataBlock(), offset);
+        blockStorage.readBlock(buffer, dataNodesStartIndex + iNode.getDataBlock(), offset);
     }
 
     void writeINodeData(INode iNode, byte[] data, int offset) throws IOException {
@@ -145,6 +165,10 @@ class DefaultFileSystem implements FileSystem {
             }
             iNode.assignDataBlock(dataBlock);
         }
-        blockStorage.writeBlock(data, DATA_NODES_START_INDEX + iNode.getDataBlock(), offset);
+        blockStorage.writeBlock(data, dataNodesStartIndex + iNode.getDataBlock(), offset);
+    }
+
+    int getBlockSize() {
+        return blockStorage.getBlockSize();
     }
 }

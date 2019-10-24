@@ -40,7 +40,7 @@ class Directory {
     void deleteFile(String name) throws IOException {
         boolean fileExists = containsFile(name);
         if (!fileExists) {
-            throw new NoSuchFileException("File does not exist: " + name);
+            throw new FileNotFoundException("File does not exist: " + name);
         }
 
         DirectoryData directoryData = getDirectoryData();

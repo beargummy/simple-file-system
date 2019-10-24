@@ -1,0 +1,15 @@
+language: java
+
+dist: trusty
+
+matrix:
+  include:
+    - jdk: openjdk11
+
+branches:
+  #Don't build tags
+  except:
+    - /^v\d/
+
+script:
+  - mvn install

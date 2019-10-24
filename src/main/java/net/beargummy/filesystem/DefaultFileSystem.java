@@ -79,36 +79,42 @@ class DefaultFileSystem implements FileSystem {
 
     @Override
     public File createFile(String name) throws IOException {
-        assertFileNameNotEmpty(name);
+        synchronized (blockStorage) {
+            assertFileNameNotEmpty(name);
 
-        if (rootDirectory.containsFile(name)) {
-            throw new IllegalArgumentException("File name already created: " + name);
+            if (rootDirectory.containsFile(name)) {
+                throw new IllegalArgumentException("File name already created: " + name);
+            }
+
+            int indexNodeNumber = indexNodeBitMap.allocate();
+            INode fileINode = new INode(indexNodeNumber, FileType.FILE, 0, -1);
+            writeINode(fileINode);
+            rootDirectory.addFile(name, indexNodeNumber);
+
+            return new DefaultFile(this, name, fileINode);
         }
-
-        int indexNodeNumber = indexNodeBitMap.allocate();
-        INode fileINode = new INode(indexNodeNumber, FileType.FILE, 0, -1);
-        writeINode(fileINode);
-        rootDirectory.addFile(name, indexNodeNumber);
-
-        return new DefaultFile(this, name, fileINode);
     }
 
     @Override
     public File openFile(String name) throws IOException {
-        assertFileNameNotEmpty(name);
-        assertFileExists(name);
+        synchronized (blockStorage) {
+            assertFileNameNotEmpty(name);
+            assertFileExists(name);
 
-        int fileINodeNumber = rootDirectory.getFileINodeNumber(name);
-        INode fileINode = readINode(fileINodeNumber);
-        return new DefaultFile(this, name, fileINode);
+            int fileINodeNumber = rootDirectory.getFileINodeNumber(name);
+            INode fileINode = readINode(fileINodeNumber);
+            return new DefaultFile(this, name, fileINode);
+        }
     }
 
     @Override
     public void deleteFile(String name) throws IOException {
-        assertFileNameNotEmpty(name);
-        assertFileExists(name);
+        synchronized (blockStorage) {
+            assertFileNameNotEmpty(name);
+            assertFileExists(name);
 
-        rootDirectory.deleteFile(name);
+            rootDirectory.deleteFile(name);
+        }
     }
 
     private void assertFileExists(String name) throws IOException {
@@ -127,45 +133,53 @@ class DefaultFileSystem implements FileSystem {
     }
 
     INode readINode(int iNodeIndex) throws IOException {
-        int iNodeBlock = ((iNodeIndex * INode.SIZE) / blockStorage.getBlockSize()) + iNodesStartIndex;
-        int iNodeOffset = (iNodeIndex * INode.SIZE) % blockStorage.getBlockSize();
+        synchronized (blockStorage) {
+            int iNodeBlock = ((iNodeIndex * INode.SIZE) / blockStorage.getBlockSize()) + iNodesStartIndex;
+            int iNodeOffset = (iNodeIndex * INode.SIZE) % blockStorage.getBlockSize();
 
-        ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
+            ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
 
-        blockStorage.readBlock(byteBuffer.array(), iNodeBlock, iNodeOffset);
-        return new INode(byteBuffer);
+            blockStorage.readBlock(byteBuffer.array(), iNodeBlock, iNodeOffset);
+            return new INode(byteBuffer);
+        }
     }
 
     void writeINode(INode iNode) throws IOException {
-        int iNodeBlock = ((iNode.getINodeNumber() * INode.SIZE) / blockStorage.getBlockSize()) + iNodesStartIndex;
-        int iNodeOffset = (iNode.getINodeNumber() * INode.SIZE) % blockStorage.getBlockSize();
-        ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
-        iNode.writeTo(byteBuffer);
-        blockStorage.writeBlock(byteBuffer.array(), iNodeBlock, iNodeOffset);
+        synchronized (blockStorage) {
+            int iNodeBlock = ((iNode.getINodeNumber() * INode.SIZE) / blockStorage.getBlockSize()) + iNodesStartIndex;
+            int iNodeOffset = (iNode.getINodeNumber() * INode.SIZE) % blockStorage.getBlockSize();
+            ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
+            iNode.writeTo(byteBuffer);
+            blockStorage.writeBlock(byteBuffer.array(), iNodeBlock, iNodeOffset);
+        }
     }
 
     void readINodeData(INode iNode, byte[] buffer, int offset) throws IOException {
-        if (null == buffer) {
-            throw new NullPointerException("Buffer is null");
+        synchronized (blockStorage) {
+            if (null == buffer) {
+                throw new NullPointerException("Buffer is null");
+            }
+            blockStorage.readBlock(buffer, dataNodesStartIndex + iNode.getDataBlock(), offset);
         }
-        blockStorage.readBlock(buffer, dataNodesStartIndex + iNode.getDataBlock(), offset);
     }
 
     void writeINodeData(INode iNode, byte[] data, int offset) throws IOException {
-        if (null == data) {
-            throw new NullPointerException("Data is null");
-        }
-        if (data.length + offset > blockStorage.getBlockSize()) {
-            throw new IllegalArgumentException("Data length is greater than block size " + blockStorage.getBlockSize());
-        }
-        if (iNode.getDataBlock() == -1) {
-            int dataBlock = dataNodeBitMap.allocate();
-            if (dataBlock == -1) {
-                throw new OutOfMemoryException("Not enough space to write");
+        synchronized (blockStorage) {
+            if (null == data) {
+                throw new NullPointerException("Data is null");
             }
-            iNode.assignDataBlock(dataBlock);
+            if (data.length + offset > blockStorage.getBlockSize()) {
+                throw new IllegalArgumentException("Data length is greater than block size " + blockStorage.getBlockSize());
+            }
+            if (iNode.getDataBlock() == -1) {
+                int dataBlock = dataNodeBitMap.allocate();
+                if (dataBlock == -1) {
+                    throw new OutOfMemoryException("Not enough space to write");
+                }
+                iNode.assignDataBlock(dataBlock);
+            }
+            blockStorage.writeBlock(data, dataNodesStartIndex + iNode.getDataBlock(), offset);
         }
-        blockStorage.writeBlock(data, dataNodesStartIndex + iNode.getDataBlock(), offset);
     }
 
     int getBlockSize() {

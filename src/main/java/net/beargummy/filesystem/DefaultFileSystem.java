@@ -2,6 +2,8 @@ package net.beargummy.filesystem;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 class DefaultFileSystem implements FileSystem {
 
@@ -9,6 +11,8 @@ class DefaultFileSystem implements FileSystem {
     private static final int I_NODE_BIT_MAP_BLOCK_NUMBER = 1;
     private static final int DATA_NODE_BIT_MAP_BLOCK_NUMBER = 2;
     private static final int ALWAYS_OCCUPIED_BLOCKS = 3;
+
+    private final ReadWriteLock lock;
 
     private int iNodesStartIndex;
     private int dataNodesStartIndex;
@@ -39,6 +43,7 @@ class DefaultFileSystem implements FileSystem {
         this.numDNodes = blockStorage.getBlocksCount() - dataNodesStartIndex;
 
         this.blockStorage = blockStorage;
+        this.lock = new ReentrantReadWriteLock();
     }
 
     void initFileSystem() throws IOException {
@@ -79,7 +84,8 @@ class DefaultFileSystem implements FileSystem {
 
     @Override
     public File createFile(String name) throws IOException {
-        synchronized (blockStorage) {
+        lock.writeLock().lock();
+        try {
             assertFileNameNotEmpty(name);
 
             if (rootDirectory.containsFile(name)) {
@@ -92,28 +98,36 @@ class DefaultFileSystem implements FileSystem {
             rootDirectory.addFile(name, indexNodeNumber);
 
             return new DefaultFile(this, name, fileINode);
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
     @Override
     public File openFile(String name) throws IOException {
-        synchronized (blockStorage) {
+        lock.readLock().lock();
+        try {
             assertFileNameNotEmpty(name);
             assertFileExists(name);
 
             int fileINodeNumber = rootDirectory.getFileINodeNumber(name);
             INode fileINode = readINode(fileINodeNumber);
             return new DefaultFile(this, name, fileINode);
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
     @Override
     public void deleteFile(String name) throws IOException {
-        synchronized (blockStorage) {
+        lock.writeLock().lock();
+        try {
             assertFileNameNotEmpty(name);
             assertFileExists(name);
 
             rootDirectory.deleteFile(name);
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -133,7 +147,8 @@ class DefaultFileSystem implements FileSystem {
     }
 
     INode readINode(int iNodeIndex) throws IOException {
-        synchronized (blockStorage) {
+        lock.readLock().lock();
+        try {
             int iNodeBlock = ((iNodeIndex * INode.SIZE) / blockStorage.getBlockSize()) + iNodesStartIndex;
             int iNodeOffset = (iNodeIndex * INode.SIZE) % blockStorage.getBlockSize();
 
@@ -141,30 +156,39 @@ class DefaultFileSystem implements FileSystem {
 
             blockStorage.readBlock(byteBuffer.array(), iNodeBlock, iNodeOffset);
             return new INode(byteBuffer);
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
     void writeINode(INode iNode) throws IOException {
-        synchronized (blockStorage) {
+        lock.writeLock().lock();
+        try {
             int iNodeBlock = ((iNode.getINodeNumber() * INode.SIZE) / blockStorage.getBlockSize()) + iNodesStartIndex;
             int iNodeOffset = (iNode.getINodeNumber() * INode.SIZE) % blockStorage.getBlockSize();
             ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
             iNode.writeTo(byteBuffer);
             blockStorage.writeBlock(byteBuffer.array(), iNodeBlock, iNodeOffset);
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
     void readINodeData(INode iNode, byte[] buffer, int offset) throws IOException {
-        synchronized (blockStorage) {
+        lock.readLock().lock();
+        try {
             if (null == buffer) {
                 throw new NullPointerException("Buffer is null");
             }
             blockStorage.readBlock(buffer, dataNodesStartIndex + iNode.getDataBlock(), offset);
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
     void writeINodeData(INode iNode, byte[] data, int offset) throws IOException {
-        synchronized (blockStorage) {
+        lock.writeLock().lock();
+        try {
             if (null == data) {
                 throw new NullPointerException("Data is null");
             }
@@ -179,6 +203,8 @@ class DefaultFileSystem implements FileSystem {
                 iNode.assignDataBlock(dataBlock);
             }
             blockStorage.writeBlock(data, dataNodesStartIndex + iNode.getDataBlock(), offset);
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 

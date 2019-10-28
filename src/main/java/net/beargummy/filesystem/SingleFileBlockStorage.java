@@ -36,15 +36,27 @@ class SingleFileBlockStorage implements BlockStorage {
 
     @Override
     public void writeBlock(byte[] data, int index, int offset) throws IOException {
-        if (data == null)
-            throw new NullPointerException("Data block is null");
+        assertDataNonNull(data);
+        writeBlock(data, index, offset, data.length);
+    }
+
+    @Override
+    public void writeBlock(byte[] data, int index, int offset, int length) throws IOException {
+        assertDataNonNull(data);
         if (index >= blockCount)
             throw new IllegalArgumentException("Block index is out of bounds");
         if (data.length > blockSize)
-            throw new IllegalArgumentException("Data is bigger than block");
+            throw new IllegalArgumentException("Data is greater than block");
+        if (length > data.length)
+            throw new IllegalArgumentException("Length is greater than data");
 
         file.seek(index * blockSize + offset);
-        file.write(data);
+        file.write(data, 0, Math.min(blockSize - (offset % blockSize), length));
+    }
+
+    private void assertDataNonNull(byte[] buffer) {
+        if (buffer == null)
+            throw new NullPointerException("Buffer is null");
     }
 
     @Override

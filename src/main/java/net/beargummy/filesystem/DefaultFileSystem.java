@@ -23,8 +23,6 @@ class DefaultFileSystem implements FileSystem {
 
     private final BlockStorage blockStorage;
 
-    private SuperBlock superBlock;
-
     private BitMap indexNodeBitMap;
     private BitMap dataNodeBitMap;
 
@@ -50,8 +48,6 @@ class DefaultFileSystem implements FileSystem {
     void initFileSystem() throws IOException {
         ByteBuffer byteBuffer = ByteBuffer.allocate(blockStorage.getBlockSize());
 
-        superBlock = new SuperBlock(0);
-        superBlock.serialize(byteBuffer.rewind());
         blockStorage.writeBlock(byteBuffer.array(), SUPER_BLOCK_NUMBER);
 
         indexNodeBitMap = new BitMap(numINodes);
@@ -71,13 +67,10 @@ class DefaultFileSystem implements FileSystem {
     void restoreFileSystem() throws IOException {
         ByteBuffer byteBuffer = ByteBuffer.allocate(blockStorage.getBlockSize());
 
-        blockStorage.readBlock(byteBuffer.array(), SUPER_BLOCK_NUMBER);
-        superBlock = new SuperBlock(byteBuffer);
-
-        blockStorage.readBlock(byteBuffer.rewind().array(), I_NODE_BIT_MAP_BLOCK_NUMBER);
+        blockStorage.readBlock(byteBuffer.clear().array(), I_NODE_BIT_MAP_BLOCK_NUMBER);
         indexNodeBitMap = new BitMap(byteBuffer);
 
-        blockStorage.readBlock(byteBuffer.array(), DATA_NODE_BIT_MAP_BLOCK_NUMBER);
+        blockStorage.readBlock(byteBuffer.clear().array(), DATA_NODE_BIT_MAP_BLOCK_NUMBER);
         dataNodeBitMap = new BitMap(byteBuffer);
 
         rootDirectory = new Directory(this, readINode(0));

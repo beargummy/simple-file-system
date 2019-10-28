@@ -51,7 +51,7 @@ public class SingleFileBlockStorageTest {
         assertThatThrownBy(() -> blockStorage.writeBlock(new byte[BLOCK_SIZE + 1], 0))
                 .as("fail to write data segment greater then block size")
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Data is bigger than block");
+                .hasMessageContaining("Data is greater than block");
     }
 
 }

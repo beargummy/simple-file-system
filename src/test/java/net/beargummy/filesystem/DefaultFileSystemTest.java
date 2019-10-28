@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -82,6 +83,38 @@ public class DefaultFileSystemTest {
                 .as("read opened content")
                 .containsSequence(originalData)
                 .as("non-written content")
+                .contains(0, Index.atIndex(bytes.length - 1));
+    }
+
+    @Test
+    public void should_write_long_content() throws IOException {
+        File originalFile = defaultFileSystem.createFile("foo");
+        assertThat(originalFile.getFileSize())
+                .as("file size")
+                .isEqualTo(0);
+
+        ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
+        byte[] data = "some data".getBytes();
+        byteBuffer.put(data);
+
+        originalFile.write(byteBuffer.array(), 8);
+
+        assertThat(originalFile.getFileSize())
+                .as("file size")
+                .isEqualTo(4096);
+
+        File reopened = defaultFileSystem.openFile("foo");
+
+        byte[] bytes = new byte[4096 + 10];
+        reopened.read(bytes);
+        assertThat(bytes)
+                .as("initial offset gap")
+                .startsWith(new byte[8])
+                .as("read whole opened content")
+                .startsWith(ByteBuffer.allocate(4096 + 8)
+                        .put(new byte[8])
+                        .put(data)
+                        .array())
                 .contains(0, Index.atIndex(bytes.length - 1));
     }
 

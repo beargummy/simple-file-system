@@ -2,6 +2,7 @@ package net.beargummy.filesystem;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 
 class Directory {
 
@@ -10,7 +11,7 @@ class Directory {
 
     Directory(DefaultFileSystem fs, int iNodeNumber, int dataBlock) {
         this.fs = fs;
-        this.iNode = new INode(iNodeNumber, FileType.DIRECTORY, 0, dataBlock);
+        this.iNode = new INode(iNodeNumber, FileType.DIRECTORY, 0, Collections.singletonList(dataBlock));
     }
 
     Directory(DefaultFileSystem fs, INode iNode) {

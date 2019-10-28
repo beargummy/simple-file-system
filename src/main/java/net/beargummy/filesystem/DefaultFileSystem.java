@@ -2,6 +2,7 @@ package net.beargummy.filesystem;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -93,7 +94,7 @@ class DefaultFileSystem implements FileSystem {
             }
 
             int indexNodeNumber = indexNodeBitMap.allocate();
-            INode fileINode = new INode(indexNodeNumber, FileType.FILE, 0, -1);
+            INode fileINode = new INode(indexNodeNumber, FileType.FILE, 0, new ArrayList<>());
             writeINode(fileINode);
             rootDirectory.addFile(name, indexNodeNumber);
 
@@ -180,7 +181,23 @@ class DefaultFileSystem implements FileSystem {
             if (null == buffer) {
                 throw new NullPointerException("Buffer is null");
             }
-            blockStorage.readBlock(buffer, dataNodesStartIndex + iNode.getDataBlock(), offset);
+
+            if (offset / blockStorage.getBlockSize() > iNode.getDataBlocks().size()) {
+                throw new IllegalArgumentException();
+            }
+            int blocksNeeded = (int) Math.ceil(((double) buffer.length + offset) / blockStorage.getBlockSize());
+
+            ByteBuffer byteBuffer = ByteBuffer.allocate(blockStorage.getBlockSize());
+            int blocksRead = 0;
+            for (int block = offset / blockStorage.getBlockSize(); block < blocksNeeded; block++) {
+                int currentOffset = blocksRead++ == 0 ? offset % Math.min(blockStorage.getBlockSize(), buffer.length) : 0;
+                int currentLength = Math.min(blockStorage.getBlockSize(), buffer.length) - currentOffset % Math.min(blockStorage.getBlockSize(), buffer.length);
+                int currentBlockNumber = iNode.getDataBlocks().get(block);
+
+                blockStorage.readBlock(byteBuffer.rewind().array(), dataNodesStartIndex + currentBlockNumber, currentOffset);
+                byteBuffer.get(buffer, currentOffset, currentLength);
+            }
+
         } finally {
             lock.readLock().unlock();
         }
@@ -192,17 +209,31 @@ class DefaultFileSystem implements FileSystem {
             if (null == data) {
                 throw new NullPointerException("Data is null");
             }
-            if (data.length + offset > blockStorage.getBlockSize()) {
-                throw new IllegalArgumentException("Data length is greater than block size " + blockStorage.getBlockSize());
-            }
-            if (iNode.getDataBlock() == -1) {
-                int dataBlock = dataNodeBitMap.allocate();
-                if (dataBlock == -1) {
-                    throw new OutOfMemoryException("Not enough space to write");
+            int blocksNeeded = (int) Math.ceil(((double) data.length + offset) / blockStorage.getBlockSize());
+            int currentSize = iNode.getDataBlocks().size();
+            if (currentSize < blocksNeeded) {
+                for (int i = 0; i < blocksNeeded - currentSize; i++) {
+                    int dataBlock = dataNodeBitMap.allocate();
+                    if (dataBlock == -1) {
+                        throw new OutOfMemoryException("Not enough space to write");
+                    }
+                    iNode.assignDataBlock(dataBlock);
                 }
-                iNode.assignDataBlock(dataBlock);
             }
-            blockStorage.writeBlock(data, dataNodesStartIndex + iNode.getDataBlock(), offset);
+
+            int blocksWritten = 0;
+            int bytesWritten = 0;
+            ByteBuffer byteBuffer = ByteBuffer.allocate(blockStorage.getBlockSize());
+            for (int block = offset / blockStorage.getBlockSize(); block < blocksNeeded; block++) {
+                int currentOffset = blocksWritten == 0 ? offset % Math.min(blockStorage.getBlockSize(), data.length) : 0;
+                int currentLength = Math.min(blockStorage.getBlockSize(), data.length) - bytesWritten - currentOffset % Math.min(blockStorage.getBlockSize(), data.length);
+                int currentBlockNumber = iNode.getDataBlocks().get(block);
+
+                byteBuffer.clear().put(data, bytesWritten, currentLength);
+                blockStorage.writeBlock(byteBuffer.array(), dataNodesStartIndex + currentBlockNumber, currentOffset, currentLength);
+                blocksWritten++;
+                bytesWritten += currentLength;
+            }
         } finally {
             lock.writeLock().unlock();
         }

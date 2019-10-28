@@ -21,12 +21,16 @@ class DefaultFile implements File {
 
     @Override
     public void read(byte[] buffer) throws IOException {
+        assertBufferNonNull(buffer);
         read(buffer, 0);
     }
 
     @Override
     public void read(byte[] buffer, int offset) throws IOException {
-        if (iNode.getDataBlock() == -1) {
+        assertBufferNonNull(buffer);
+        assertPositiveOffset(offset);
+
+        if (iNode.getDataBlocks().isEmpty()) {
             // todo: throw or return with empty array ?
             return;
         }
@@ -34,15 +38,29 @@ class DefaultFile implements File {
     }
 
     @Override
-    public void write(byte[] data) throws IOException {
-        write(data, 0);
+    public void write(byte[] buffer) throws IOException {
+        assertBufferNonNull(buffer);
+        write(buffer, 0);
     }
 
     @Override
-    public void write(byte[] data, int offset) throws IOException {
-        fs.writeINodeData(iNode, data, offset);
-        iNode.setSize(iNode.getSize() + data.length);
+    public void write(byte[] buffer, int offset) throws IOException {
+        assertBufferNonNull(buffer);
+        assertPositiveOffset(offset);
+
+        fs.writeINodeData(iNode, buffer, offset);
+        iNode.setSize(iNode.getSize() + buffer.length);
         fs.writeINode(iNode);
+    }
+
+    private void assertPositiveOffset(int offset) {
+        if (offset < 0)
+            throw new IllegalArgumentException("Offset cannot be negative");
+    }
+
+    private void assertBufferNonNull(byte[] buffer) {
+        if (buffer == null)
+            throw new NullPointerException("Buffer is null");
     }
 
     @Override

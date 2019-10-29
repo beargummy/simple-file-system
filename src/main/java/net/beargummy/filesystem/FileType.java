@@ -2,7 +2,6 @@ package net.beargummy.filesystem;
 
 enum FileType {
 
-    UNKNOWN(0),
     FILE(100),
     DIRECTORY(200);
 

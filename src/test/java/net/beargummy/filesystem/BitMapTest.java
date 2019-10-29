@@ -70,4 +70,22 @@ public class BitMapTest {
                 .as("third allocation")
                 .isEqualTo(-1);
     }
+
+    @Test
+    public void should_free_and_reallocate() {
+        BitMap bitMap = new BitMap(2);
+        assertThat(bitMap.allocate())
+                .as("first allocation")
+                .isEqualTo(0);
+
+        assertThat(bitMap.allocate())
+                .as("second allocation")
+                .isEqualTo(1);
+
+        bitMap.free(0);
+
+        assertThat(bitMap.allocate())
+                .as("allocation after free")
+                .isEqualTo(0);
+    }
 }

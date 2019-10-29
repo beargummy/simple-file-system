@@ -41,6 +41,10 @@ class DirectoryData {
         return -1;
     }
 
+    int getSize() {
+        return size;
+    }
+
     static class DirectoryRecord {
         static final int MIN_SIZE = 4 * 4;
 

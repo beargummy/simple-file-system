@@ -52,7 +52,7 @@ class BitMap {
             throw new IndexOutOfBoundsException("index is out of bounds: " + index);
         }
 
-        if (bitSet.get(index))
+        if (bitSet.get(index) == false)
             throw new IllegalArgumentException("already free: " + index);
 
         bitSet.clear(index);

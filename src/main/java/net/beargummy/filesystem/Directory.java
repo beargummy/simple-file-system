@@ -24,13 +24,17 @@ class Directory {
     }
 
     // todo: consider moving it to FS itself
-    void addFile(String name, int indexNodeNumber) throws IOException {
+    void addFile(String name, INode fileINode) throws IOException {
         boolean alreadyExists = containsFile(name);
         if (alreadyExists) {
             throw new FileAlreadyExists("File already exists: " + name);
         }
         DirectoryData directoryData = getDirectoryData();
-        directoryData.addRecord(new DirectoryData.DirectoryRecord(FileType.FILE, indexNodeNumber, name));
+        directoryData.addRecord(new DirectoryData.DirectoryRecord(
+                fileINode.getType(),
+                fileINode.getINodeNumber(),
+                name)
+        );
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(fs.getBlockSize());
         directoryData.serialize(byteBuffer);
@@ -65,6 +69,11 @@ class Directory {
         ByteBuffer byteBuffer = ByteBuffer.allocate(fs.getBlockSize());
         fs.readINodeData(iNode, byteBuffer.array(), 0);
         return new DirectoryData(byteBuffer);
+    }
+
+    boolean isEmpty() throws IOException {
+        return getDirectoryData()
+                .getSize() == 0;
     }
 
     @Override

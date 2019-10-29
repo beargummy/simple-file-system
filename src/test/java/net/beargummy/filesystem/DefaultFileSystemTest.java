@@ -39,6 +39,80 @@ public class DefaultFileSystemTest {
     }
 
     @Test
+    public void should_create_file_in_directory() throws IOException {
+        assertThat(defaultFileSystem.createFile("/foo/bar"))
+                .as("file")
+                .isNotNull()
+                .extracting(File::getFileSize)
+                .as("file size")
+                .isEqualTo(0);
+
+        assertThat(defaultFileSystem.openFile("/foo/bar"))
+                .as("reopened")
+                .isNotNull();
+    }
+
+    @Test
+    public void should_delete_file_in_directory() throws IOException {
+        assertThat(defaultFileSystem.createFile("/foo/bar"))
+                .as("file")
+                .isNotNull();
+
+        assertThat(defaultFileSystem.openFile("/foo/bar"))
+                .as("reopened")
+                .isNotNull();
+
+        defaultFileSystem.deleteFile("/foo/bar");
+
+        assertThatThrownBy(() -> defaultFileSystem.openFile("/foo/bar"), "deleted file reopen")
+                .as("deleted file reopen exception")
+                .isInstanceOf(FileNotFoundException.class)
+                .hasMessageContaining("File does not exist");
+    }
+
+    @Test
+    public void should_not_allow_open_directory_as_file() throws IOException {
+        defaultFileSystem.createFile("/foo/bar");
+
+        assertThatThrownBy(() -> defaultFileSystem.openFile("/foo"))
+                .as("opening directory as a file")
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("File is a directory");
+    }
+
+    @Test
+    public void should_not_allow_delete_non_empty_directory() throws IOException {
+        defaultFileSystem.createFile("/foo/bar");
+
+        assertThatThrownBy(() -> defaultFileSystem.deleteFile("/foo"))
+                .as("opening directory as a file")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    public void should_fail_to_create_file_with_empty_name_in_directory() throws IOException {
+        assertThatThrownBy(() -> defaultFileSystem.createFile("/foo/ "), "blank file name in directory")
+                .as("empty file name exception")
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> defaultFileSystem.createFile("/foo/"), "empty file name in directory")
+                .as("empty file name exception")
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> defaultFileSystem.createFile(" "), "blank file name")
+                .as("empty file name exception")
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> defaultFileSystem.createFile(""), "empty file name")
+                .as("empty file name exception")
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> defaultFileSystem.createFile("/"), "root file name")
+                .as("empty file name exception")
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     public void should_write_content_to_file_and_read_back() throws IOException {
         File file = defaultFileSystem.createFile("foo");
         assertThat(file.getFileSize())
@@ -165,10 +239,15 @@ public class DefaultFileSystemTest {
             file.write(data);
         }
 
-        assertThatThrownBy(() -> {
-            File file = defaultFileSystem.createFile("foo7");
-            byte[] data = "Some data".getBytes();
-            file.write(data);
-        }, "calling double create");
+        File file = defaultFileSystem.createFile("foo7");
+        byte[] data = "Some data".getBytes();
+        assertThatThrownBy(() -> file.write(data), "calling double create");
+
+        defaultFileSystem.deleteFile("foo0");
+
+        file.write(data);
+        assertThat(file.getFileSize())
+                .as("file size")
+                .isEqualTo(data.length);
     }
 }

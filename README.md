@@ -5,6 +5,9 @@
 Simple single-file-backed file system that supports basic file operations 
 like create, write content, read content, delete.
 
+There are limited directories support in terms of file placement. 
+One may create files under some paths, with `/` as default parts separator.
+
 Default implementation uses single file as underlying block storage.
 No directory support at all so far.
 
@@ -16,5 +19,5 @@ which contains basic CRUD scenarios.
 - [x] Basic file operations support: create, write, read, delete.
 - [x] Concurrency control.
 - [x] Multi-block files support.
-- [ ] Directories support.
+- [x] Directories support.
 - [ ] Fine-grained concurrency control.

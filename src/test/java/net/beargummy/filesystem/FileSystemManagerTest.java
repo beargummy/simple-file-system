@@ -9,7 +9,7 @@ public class FileSystemManagerTest {
 
     @Test
     public void should_create_new_filesystem() throws Exception {
-        java.io.File file = java.io.File.createTempFile("FileSystemFactoryTest", "tmp");
+        java.io.File file = java.io.File.createTempFile("FileSystemFactoryTest", "should_create_new_filesystem");
         file.deleteOnExit();
 
         FileSystem fileSystem = FileSystemManager.getInstance()
@@ -22,13 +22,13 @@ public class FileSystemManagerTest {
 
     @Test
     public void should_restore_filesystem() throws Exception {
-        java.io.File file = java.io.File.createTempFile("FileSystemFactoryTest", "tmp");
+        java.io.File file = java.io.File.createTempFile("FileSystemFactoryTest", "should_restore_filesystem");
         file.deleteOnExit();
 
         FileSystem original = FileSystemManager.getInstance()
                 .create(file, 4 * 1024, 8);
 
-        File foo = original.createFile("foo");
+        File foo = original.createFile("/foo/bar");
         byte[] originalContent = "content".getBytes();
         foo.write(originalContent);
 
@@ -39,10 +39,12 @@ public class FileSystemManagerTest {
                 .as("restored FS")
                 .isNotSameAs(original);
 
-        assertThatThrownBy(() -> restored.createFile("foo"), "duplicate file creation");
+        assertThatThrownBy(() -> restored.createFile("/foo/bar"), "duplicate file creation")
+                .as("duplicate file exception")
+                .isInstanceOf(IllegalArgumentException.class);
 
         byte[] restoredContent = new byte[originalContent.length + 1];
-        restored.openFile("foo")
+        restored.openFile("/foo/bar")
                 .read(restoredContent);
 
         assertThat(restoredContent)

@@ -20,7 +20,7 @@ class INode {
         this.iNodeNumber = iNodeNumber;
         this.type = fileType;
         this.dataBlocksCount = dataBlocks.size();
-        this.dataBlocks = dataBlocks;
+        this.dataBlocks = new ArrayList<>(dataBlocks);
         this.size = size;
     }
 

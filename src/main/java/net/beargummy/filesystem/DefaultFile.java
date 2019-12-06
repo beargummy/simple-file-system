@@ -20,37 +20,41 @@ class DefaultFile implements File {
     }
 
     @Override
-    public void read(byte[] buffer) throws IOException {
+    public int read(byte[] buffer) throws IOException {
         assertBufferNonNull(buffer);
-        read(buffer, 0);
+        return read(buffer, 0, buffer.length);
     }
 
     @Override
-    public void read(byte[] buffer, int offset) throws IOException {
+    public int read(byte[] buffer, int offset, int length) throws IOException {
         assertBufferNonNull(buffer);
         assertPositiveOffset(offset);
 
         if (iNode.getDataBlocks().isEmpty()) {
-            // todo: throw or return with empty array ?
-            return;
+            return 0;
         }
-        fs.readINodeData(iNode, buffer, offset);
+        return fs.readINodeData(iNode, buffer, offset, length, 0L);
     }
 
     @Override
-    public void write(byte[] buffer) throws IOException {
+    public int write(byte[] buffer) throws IOException {
         assertBufferNonNull(buffer);
-        write(buffer, 0);
+        return write(buffer, 0, buffer.length, 0);
     }
 
     @Override
-    public void write(byte[] buffer, int offset) throws IOException {
+    public int write(byte[] buffer, int offset, int length, long position) throws IOException {
         assertBufferNonNull(buffer);
         assertPositiveOffset(offset);
+        assertValidLength(buffer, offset, length);
+        assertValidPosition(position, iNode);
 
-        fs.writeINodeData(iNode, buffer, offset);
-        iNode.setSize(iNode.getSize() + buffer.length);
-        fs.writeINode(iNode);
+        return fs.writeINodeData(iNode, buffer, offset, length, position);
+    }
+
+    @Override
+    public int append(byte[] buffer, int offset, int length) throws IOException {
+        throw new IllegalStateException("not implemented yet");
     }
 
     private void assertPositiveOffset(int offset) {
@@ -63,8 +67,20 @@ class DefaultFile implements File {
             throw new NullPointerException("Buffer is null");
     }
 
+    private void assertValidLength(byte[] buffer, int offset, int length) {
+        if (length <= 0)
+            throw new IllegalArgumentException("Length should be strictly positive number");
+        if (buffer.length - offset < length)
+            throw new IllegalArgumentException("Length should not be greater than buffer size plus offset");
+    }
+
+    private void assertValidPosition(long position, INode iNode) {
+        if (position > iNode.getSize() + 1)
+            throw new IllegalArgumentException("Position should be less or equal to file size");
+    }
+
     @Override
-    public int getFileSize() {
+    public long getFileSize() {
         return iNode.getSize();
     }
 

@@ -11,7 +11,7 @@ class Directory {
 
     Directory(DefaultFileSystem fs, int iNodeNumber, int dataBlock) {
         this.fs = fs;
-        this.iNode = new INode(iNodeNumber, FileType.DIRECTORY, 0, Collections.singletonList(dataBlock));
+        this.iNode = new INode(iNodeNumber, FileType.DIRECTORY, fs.getBlockSize(), Collections.singletonList(dataBlock));
     }
 
     Directory(DefaultFileSystem fs, INode iNode) {
@@ -38,7 +38,7 @@ class Directory {
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(fs.getBlockSize());
         directoryData.serialize(byteBuffer);
-        fs.writeINodeData(iNode, byteBuffer.array(), 0);
+        fs.writeINodeData(iNode, byteBuffer.array());
     }
 
     // todo: consider moving it to FS itself
@@ -53,7 +53,7 @@ class Directory {
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(fs.getBlockSize());
         directoryData.serialize(byteBuffer);
-        fs.writeINodeData(iNode, byteBuffer.array(), 0);
+        fs.writeINodeData(iNode, byteBuffer.array());
     }
 
     boolean containsFile(String name) throws IOException {
@@ -67,7 +67,7 @@ class Directory {
 
     private DirectoryData getDirectoryData() throws IOException {
         ByteBuffer byteBuffer = ByteBuffer.allocate(fs.getBlockSize());
-        fs.readINodeData(iNode, byteBuffer.array(), 0);
+        fs.readINodeData(iNode, byteBuffer.array());
         return new DirectoryData(byteBuffer);
     }
 

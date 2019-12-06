@@ -19,39 +19,48 @@ class SingleFileBlockStorage implements BlockStorage {
     }
 
     @Override
-    public void readBlock(byte[] buffer, int index) throws IOException {
-        readBlock(buffer, index, 0);
+    public int readBlock(int blockNumber, byte[] buffer) throws IOException {
+        return readBlock(blockNumber, buffer, 0, buffer.length, 0);
     }
 
     @Override
-    public void readBlock(byte[] buffer, int index, int offset) throws IOException {
-        file.seek(index * blockSize + offset);
-        file.read(buffer);
+    public int readBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException {
+        file.seek(blockNumber * blockSize + position);
+        return file.read(buffer, 0, length);
     }
 
     @Override
-    public void writeBlock(byte[] data, int index) throws IOException {
-        writeBlock(data, index, 0);
+    public void writeBlock(int blockNumber, byte[] buffer) throws IOException {
+        writeBlock(blockNumber, buffer, 0, buffer.length, 0);
     }
 
     @Override
-    public void writeBlock(byte[] data, int index, int offset) throws IOException {
-        assertDataNonNull(data);
-        writeBlock(data, index, offset, data.length);
+    public void writeBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException {
+        assertDataNonNull(buffer);
+        assertBlockNumberValid(blockNumber);
+        assertOffsetValid(buffer, offset, length, position);
+
+        file.seek(blockNumber * blockSize + position);
+        file.write(buffer, offset, length);
     }
 
-    @Override
-    public void writeBlock(byte[] data, int index, int offset, int length) throws IOException {
-        assertDataNonNull(data);
-        if (index >= blockCount)
+    private void assertBlockNumberValid(int blockNumber) {
+        if (blockNumber >= blockCount)
             throw new IllegalArgumentException("Block index is out of bounds");
-        if (data.length > blockSize)
-            throw new IllegalArgumentException("Data is greater than block");
-        if (length > data.length)
-            throw new IllegalArgumentException("Length is greater than data");
+    }
 
-        file.seek(index * blockSize + offset);
-        file.write(data, 0, Math.min(blockSize - (offset % blockSize), length));
+    private void assertOffsetValid(byte[] buffer, int offset, int length, int position) {
+        if (length + position > blockSize)
+            throw new IllegalArgumentException("Data is greater than block");
+        if (offset < 0)
+            throw new IllegalArgumentException("Offset should be strictly positive");
+        if (offset > buffer.length)
+            throw new IllegalArgumentException("Offset should be less than buffer length");
+    }
+
+    private void assertLength(byte[] buffer, int offset, int length) {
+        if (length - offset > buffer.length)
+            throw new IllegalArgumentException("Length is greater than buffer size");
     }
 
     private void assertDataNonNull(byte[] buffer) {

@@ -38,7 +38,7 @@ public class BitMapTest {
                 .isEqualTo(9);
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(256);
-        bitMap.serialize(byteBuffer);
+        bitMap.writeTo(byteBuffer);
 
         BitMap deserialized = new BitMap(byteBuffer.rewind());
 

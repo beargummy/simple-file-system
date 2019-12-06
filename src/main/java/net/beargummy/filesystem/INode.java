@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-class INode {
+class INode implements ByteBufferSerializable {
 
     static final int SIZE = 4 // typeTag
             + 4 // iNodeNumber

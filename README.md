@@ -17,7 +17,12 @@ which contains basic CRUD scenarios.
 
 ## TODOs
 - [x] Basic file operations support: create, write, read, delete.
+- [ ] Append data to file support.
 - [x] Concurrency control.
 - [x] Multi-block files support.
 - [x] Directories support.
+- [ ] Support for files more than 2Gb in size.
 - [ ] Fine-grained concurrency control.
+
+## Acknowledgements
+The idea of the project inspired by the great book [Operating Systems: Three Easy Pieces](http://pages.cs.wisc.edu/~remzi/OSTEP/) by Remzi H. Arpaci-Dusseau and Andrea C. Arpaci-Dusseau

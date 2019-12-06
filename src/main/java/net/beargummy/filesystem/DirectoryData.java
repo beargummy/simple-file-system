@@ -3,11 +3,17 @@ package net.beargummy.filesystem;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-class DirectoryData {
+class DirectoryData implements ByteBufferSerializable {
 
     private int size;
     private List<DirectoryRecord> records;
+
+    DirectoryData(List<DirectoryRecord> records) {
+        this.size = records.size();
+        this.records = records;
+    }
 
     DirectoryData(ByteBuffer byteBuffer) {
         this.size = byteBuffer.getInt();
@@ -17,9 +23,10 @@ class DirectoryData {
         }
     }
 
-    public void serialize(ByteBuffer byteBuffer) {
+    @Override
+    public void writeTo(ByteBuffer byteBuffer) {
         byteBuffer.putInt(size);
-        records.forEach(record -> record.serialize(byteBuffer));
+        records.forEach(record -> record.writeTo(byteBuffer));
     }
 
     void addRecord(DirectoryRecord directoryRecord) {
@@ -33,7 +40,7 @@ class DirectoryData {
     }
 
     int getFileINodeNumber(String name) {
-        for (DirectoryData.DirectoryRecord r : records) {
+        for (DirectoryRecord r : records) {
             if (name.equals(r.name)) {
                 return r.iNodeNumber;
             }
@@ -45,43 +52,25 @@ class DirectoryData {
         return size;
     }
 
-    static class DirectoryRecord {
-        static final int MIN_SIZE = 4 * 4;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DirectoryData that = (DirectoryData) o;
+        return size == that.size &&
+                Objects.equals(records, that.records);
+    }
 
-        FileType recordType;
-        int recordSize;
-        int iNodeNumber;
-        int nameSize;
-        String name;
+    @Override
+    public int hashCode() {
+        return Objects.hash(size, records);
+    }
 
-        DirectoryRecord(ByteBuffer byteBuffer) {
-            this.recordType = FileType.valueOf(byteBuffer.getInt());
-            this.recordSize = byteBuffer.getInt();
-            this.iNodeNumber = byteBuffer.getInt();
-            this.nameSize = byteBuffer.getInt();
-            byte[] nameBytes = new byte[nameSize];
-            byteBuffer.get(nameBytes);
-            this.name = new String(nameBytes);
-        }
-
-        DirectoryRecord(FileType fileType, int iNodeNumber, String name) {
-            this.recordType = fileType;
-            this.recordSize = nameSize + MIN_SIZE;
-            this.iNodeNumber = iNodeNumber;
-            this.nameSize = name.getBytes().length;
-            this.name = name;
-        }
-
-        void serialize(ByteBuffer byteBuffer) {
-            byteBuffer
-                    .putInt(recordType.getCode())
-                    .putInt(recordSize)
-                    .putInt(iNodeNumber)
-                    .putInt(nameSize);
-            if (nameSize > 0) {
-                byteBuffer.put(name.getBytes());
-            }
-        }
-
+    @Override
+    public String toString() {
+        return "DirectoryData{" +
+                "size=" + size +
+                ", records=" + records +
+                '}';
     }
 }

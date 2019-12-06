@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.Objects;
 
-class BitMap {
+class BitMap implements ByteBufferSerializable {
 
     private final int size;
     private int numAllocated;
@@ -63,7 +63,8 @@ class BitMap {
         return size - numAllocated;
     }
 
-    void serialize(ByteBuffer byteBuffer) {
+    @Override
+    public void writeTo(ByteBuffer byteBuffer) {
         byteBuffer.putInt(size);
         byteBuffer.putInt(numAllocated);
         byteBuffer.put(bitSet.toByteArray());

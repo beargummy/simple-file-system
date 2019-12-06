@@ -150,7 +150,7 @@ class PersistenceManager {
 
     void writeBitMap(BitMap bitMap, int blockNumber) throws IOException {
         ByteBuffer byteBuffer = ByteBuffer.allocate(blockSize);
-        bitMap.serialize(byteBuffer);
+        bitMap.writeTo(byteBuffer);
         blockStorage.writeBlock(blockNumber, byteBuffer.array());
     }
 

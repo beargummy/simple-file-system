@@ -30,14 +30,14 @@ class Directory {
             throw new FileAlreadyExists("File already exists: " + name);
         }
         DirectoryData directoryData = getDirectoryData();
-        directoryData.addRecord(new DirectoryData.DirectoryRecord(
+        directoryData.addRecord(new DirectoryRecord(
                 fileINode.getType(),
                 fileINode.getINodeNumber(),
                 name)
         );
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(fs.getBlockSize());
-        directoryData.serialize(byteBuffer);
+        directoryData.writeTo(byteBuffer);
         fs.writeINodeData(iNode, byteBuffer.array());
     }
 
@@ -52,7 +52,7 @@ class Directory {
         directoryData.deleteRecord(name);
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(fs.getBlockSize());
-        directoryData.serialize(byteBuffer);
+        directoryData.writeTo(byteBuffer);
         fs.writeINodeData(iNode, byteBuffer.array());
     }
 

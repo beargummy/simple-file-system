@@ -46,7 +46,7 @@ public interface File {
      * @throws NullPointerException if {@code buffer} is {@code null}.
      * @throws IOException          if an I/O error occurs.
      */
-    void write(byte[] buffer) throws IOException;
+    int write(byte[] buffer) throws IOException;
 
     /**
      * Writes {@code length} bytes from the specified byte array
@@ -58,10 +58,9 @@ public interface File {
      * @param position the start position in the file.
      * @throws IllegalArgumentException if {@code offset} is negative.
      * @throws NullPointerException     if {@code buffer} is {@code null}.
-     * @throws OutOfMemoryException     if there is no enough space to write content.
      * @throws IOException              if an I/O error occurs.
      */
-    void write(byte[] buffer, int offset, int length, long position) throws IOException;
+    int write(byte[] buffer, int offset, int length, long position) throws IOException;
 
     /**
      * Writes {@code length} bytes from the specified byte array
@@ -72,7 +71,6 @@ public interface File {
      * @param length amount of bytes to write from {@code buffer}
      * @throws IllegalArgumentException if {@code offset} is negative.
      * @throws NullPointerException     if {@code buffer} is {@code null}.
-     * @throws OutOfMemoryException     if there is no enough space to write content.
      * @throws IOException              if an I/O error occurs.
      */
     int append(byte[] buffer, int offset, int length) throws IOException;

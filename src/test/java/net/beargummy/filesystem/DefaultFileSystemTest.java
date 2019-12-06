@@ -201,7 +201,11 @@ public class DefaultFileSystemTest {
         }
 
         byte[] array = byteBuffer.array();
-        originalFile.write(array, 0, BLOCK_SIZE * 3 - 8, 0L);
+        int bytesWritten = originalFile.write(array, 0, BLOCK_SIZE * 3 - 8, 0L);
+
+        assertThat(bytesWritten)
+                .as("bytes written")
+                .isEqualTo(BLOCK_SIZE * 3 - 8);
 
         assertThat(originalFile.getFileSize())
                 .as("file size")
@@ -265,7 +269,7 @@ public class DefaultFileSystemTest {
     }
 
     @Test
-    public void should_throw_out_of_memory_when_no_allocation_blocks() throws IOException {
+    public void should_write_until_there_is_a_space() throws IOException {
         for (int i = 0; i < 3; i++) {
             File file = defaultFileSystem.createFile("foo" + i);
             byte[] data = "Some data".getBytes();
@@ -274,11 +278,17 @@ public class DefaultFileSystemTest {
 
         File file = defaultFileSystem.createFile("foo7");
         byte[] data = "Some data".getBytes();
-        assertThatThrownBy(() -> file.write(data), "calling double create");
+        int bytesWritten = file.write(data);
+        assertThat(bytesWritten)
+                .as("bytes written when no memory")
+                .isEqualTo(0);
 
         defaultFileSystem.deleteFile("foo0");
 
-        file.write(data);
+        bytesWritten = file.write(data);
+        assertThat(bytesWritten)
+                .as("bytes written when no memory")
+                .isEqualTo(data.length);
         assertThat(file.getFileSize())
                 .as("file size")
                 .isEqualTo((long) data.length);

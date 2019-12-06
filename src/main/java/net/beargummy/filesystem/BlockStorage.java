@@ -7,7 +7,7 @@ public interface BlockStorage {
     /**
      * Reads up to {@code buffer.length} bytes of block buffer into an array of bytes.
      *
-     * @param blockNumber of block to be returned
+     * @param blockNumber index of block to be returned
      * @param buffer      the buffer into which the buffer is read.
      * @return the total number of bytes read into the buffer, or -1 if there is no more data
      * @throws NullPointerException if {@code buffer} is {@code null}.
@@ -18,7 +18,7 @@ public interface BlockStorage {
     /**
      * Reads up to {@code buffer.length} bytes of block buffer into an array of bytes.
      *
-     * @param blockNumber of block to be returned
+     * @param blockNumber index of block to be returned
      * @param buffer      the buffer into which the buffer is read.
      * @param offset      offset in buffer.
      * @param length      amount of bytes to read to buffer.

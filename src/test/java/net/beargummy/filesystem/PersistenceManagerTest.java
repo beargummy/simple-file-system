@@ -128,6 +128,38 @@ public class PersistenceManagerTest {
     }
 
     @Test
+    public void should_append_unless_space_is_available() throws IOException {
+        when(fileSystem.allocateDNode())
+                .thenReturn(1)
+                .thenReturn(2)
+                .thenReturn(-1);
+        int bytesWritten = persistenceManager.writeINodeData(
+                new INode(1, FileType.FILE, BLOCK_SIZE - 8, Collections.singletonList(0)),
+                new byte[BLOCK_SIZE * 3], 0, BLOCK_SIZE * 3, BLOCK_SIZE
+        );
+
+        assertThat(bytesWritten)
+                .as("bytes written")
+                .isEqualTo(BLOCK_SIZE * 2);
+    }
+
+    @Test
+    public void should_write_unless_space_is_available() throws IOException {
+        when(fileSystem.allocateDNode())
+                .thenReturn(1)
+                .thenReturn(2)
+                .thenReturn(-1);
+        int bytesWritten = persistenceManager.writeINodeData(
+                new INode(1, FileType.FILE, BLOCK_SIZE - 8, Collections.singletonList(0)),
+                new byte[BLOCK_SIZE * 4], 0, BLOCK_SIZE * 3 + 64, BLOCK_SIZE
+        );
+
+        assertThat(bytesWritten)
+                .as("bytes written")
+                .isEqualTo(BLOCK_SIZE * 2);
+    }
+
+    @Test
     public void should_read_full_block() throws IOException {
         persistenceManager.readINodeData(
                 new INode(1, FileType.DIRECTORY, BLOCK_SIZE, Collections.singletonList(0)),
@@ -191,7 +223,7 @@ public class PersistenceManagerTest {
     }
 
     @Test
-    public void should_fail_to_read_unexisting_content() throws IOException {
+    public void should_fail_to_read_not_existing_content() throws IOException {
         int bytesRead = persistenceManager.readINodeData(
                 new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[32], 0, 16, 32L

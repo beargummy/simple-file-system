@@ -37,19 +37,19 @@ class DefaultFile implements File {
     }
 
     @Override
-    public void write(byte[] buffer) throws IOException {
+    public int write(byte[] buffer) throws IOException {
         assertBufferNonNull(buffer);
-        write(buffer, 0, buffer.length, 0);
+        return write(buffer, 0, buffer.length, 0);
     }
 
     @Override
-    public void write(byte[] buffer, int offset, int length, long position) throws IOException {
+    public int write(byte[] buffer, int offset, int length, long position) throws IOException {
         assertBufferNonNull(buffer);
         assertPositiveOffset(offset);
         assertValidLength(buffer, offset, length);
         assertValidPosition(position, iNode);
 
-        fs.writeINodeData(iNode, buffer, offset, length, position);
+        return fs.writeINodeData(iNode, buffer, offset, length, position);
     }
 
     @Override

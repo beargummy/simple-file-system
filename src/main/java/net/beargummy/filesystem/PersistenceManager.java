@@ -98,18 +98,8 @@ class PersistenceManager {
 
         long iNodeSize = iNode.getSize();
         long newSize = Math.max(position + length, iNodeSize);
-        int blocksNeeded = (int) Math.ceil(((double) newSize) / blockSize);
-        int currentBlocks = iNode.getDataBlocks().size();
-        if (currentBlocks < blocksNeeded) {
-            for (int i = 0; i < blocksNeeded - currentBlocks; i++) {
-                int dataBlock = fileSystem.allocateDNode();
-                if (dataBlock == -1) {
-                    throw new OutOfMemoryException("Not enough space to write");
-                }
-                iNode.assignDataBlock(dataBlock);
-            }
-        }
 
+        int blocksNeeded = (int) Math.ceil(((double) newSize) / blockSize);
         int firstBlockOffsetToWrite = (int) (position / blockSize);
         int lastBlockToWrite = blocksNeeded - firstBlockOffsetToWrite - 1;
         lastBlockToWrite = lastBlockToWrite == 0 ? firstBlockOffsetToWrite : lastBlockToWrite;
@@ -125,7 +115,10 @@ class PersistenceManager {
             } else {
                 currentLength = Math.min(blockSize, length) - currentBlockPosition % Math.min(blockSize, length);
             }
-            int currentBlockNumber = iNode.getDataBlocks().get(block);
+            int currentBlockNumber = getNextBlock(block, iNode);
+            if (currentBlockNumber == -1) {
+                break;
+            }
 
             byteBuffer.clear().put(data, bytesWritten + offset, currentLength);
             blockStorage.writeBlock(dataNodesStartIndex + currentBlockNumber, byteBuffer.flip().array(), 0, currentLength, currentBlockPosition);
@@ -134,6 +127,18 @@ class PersistenceManager {
 
         iNode.setSize(newSize);
         return bytesWritten;
+    }
+
+    private int getNextBlock(int block, INode iNode) {
+        if (block < iNode.getDataBlocks().size()) {
+            return iNode.getDataBlocks().get(block);
+        }
+
+        int dataBlock = fileSystem.allocateDNode();
+        if (dataBlock != -1) {
+            iNode.assignDataBlock(dataBlock);
+        }
+        return dataBlock;
     }
 
     BitMap readBitMap(int blockNumber) throws IOException {

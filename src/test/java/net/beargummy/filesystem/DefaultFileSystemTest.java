@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class DefaultFileSystemTest {
 
+    public static final int BLOCK_SIZE = 4 * 1024;
     private FileSystem defaultFileSystem;
 
     @Before
@@ -21,7 +22,8 @@ public class DefaultFileSystemTest {
         file.deleteOnExit();
         DefaultFileSystem defaultFileSystem = new DefaultFileSystem(
                 1,
-                new SingleFileBlockStorage(new RandomAccessFile(file, "rw"), 4 * 1024, 8)
+                new SingleFileBlockStorage(new RandomAccessFile(file, "rw"), BLOCK_SIZE, 8)
+                // new InMemoryBlockStorage(BLOCK_SIZE, 8)
         );
         defaultFileSystem.initFileSystem();
         this.defaultFileSystem = defaultFileSystem;
@@ -35,7 +37,17 @@ public class DefaultFileSystemTest {
                 .isNotNull()
                 .extracting(File::getFileSize)
                 .as("file size")
-                .isEqualTo(0);
+                .isEqualTo(0L);
+
+        assertThat(defaultFileSystem.openFile("/foo"))
+                .as("reopened")
+                .isNotNull();
+    }
+
+    @Test
+    public void should_fail_with_wrong_path() throws IOException {
+        assertThatThrownBy(() -> defaultFileSystem.createFile("//foo/bar"))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -45,7 +57,7 @@ public class DefaultFileSystemTest {
                 .isNotNull()
                 .extracting(File::getFileSize)
                 .as("file size")
-                .isEqualTo(0);
+                .isEqualTo(0L);
 
         assertThat(defaultFileSystem.openFile("/foo/bar"))
                 .as("reopened")
@@ -90,9 +102,9 @@ public class DefaultFileSystemTest {
     }
 
     @Test
-    public void should_fail_to_create_file_with_empty_name_in_directory() throws IOException {
+    public void should_fail_to_create_file_with_illegal_file_name() throws IOException {
         assertThatThrownBy(() -> defaultFileSystem.createFile("/foo/ "), "blank file name in directory")
-                .as("empty file name exception")
+                .as("blank file name exception")
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> defaultFileSystem.createFile("/foo/"), "empty file name in directory")
@@ -100,7 +112,7 @@ public class DefaultFileSystemTest {
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> defaultFileSystem.createFile(" "), "blank file name")
-                .as("empty file name exception")
+                .as("blank file file name exception")
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> defaultFileSystem.createFile(""), "empty file name")
@@ -108,7 +120,15 @@ public class DefaultFileSystemTest {
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> defaultFileSystem.createFile("/"), "root file name")
-                .as("empty file name exception")
+                .as("root file name name exception")
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> defaultFileSystem.createFile("//foo"), "double-slash in start of path")
+                .as("double-slash in start of path exception")
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() -> defaultFileSystem.createFile("/foo//bar"), "double-slash in path")
+                .as("double-slash in path exception")
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -117,7 +137,7 @@ public class DefaultFileSystemTest {
         File file = defaultFileSystem.createFile("foo");
         assertThat(file.getFileSize())
                 .as("file size")
-                .isEqualTo(0);
+                .isEqualTo(0L);
 
         byte[] data = "Some data".getBytes();
         file.write(data);
@@ -126,8 +146,11 @@ public class DefaultFileSystemTest {
                 .as("file size")
                 .isEqualTo(data.length);
 
-        byte[] bytes = new byte[10];
-        file.read(bytes);
+        byte[] bytes = new byte[BLOCK_SIZE];
+        int readBytes = file.read(bytes, 0, BLOCK_SIZE);
+        assertThat(readBytes)
+                .as("bytes read")
+                .isEqualTo(data.length);
         assertThat(bytes)
                 .as("read content")
                 .containsSequence(data)
@@ -140,7 +163,7 @@ public class DefaultFileSystemTest {
         File originalFile = defaultFileSystem.createFile("foo");
         assertThat(originalFile.getFileSize())
                 .as("file size")
-                .isEqualTo(0);
+                .isEqualTo(0L);
 
         byte[] originalData = "Some data".getBytes();
         originalFile.write(originalData);
@@ -151,8 +174,11 @@ public class DefaultFileSystemTest {
 
         File reopened = defaultFileSystem.openFile("foo");
 
-        byte[] bytes = new byte[10];
-        reopened.read(bytes);
+        byte[] bytes = new byte[BLOCK_SIZE];
+        int readBytes = reopened.read(bytes, 0, BLOCK_SIZE);
+        assertThat(readBytes)
+                .as("bytes read")
+                .isEqualTo(originalData.length);
         assertThat(bytes)
                 .as("read opened content")
                 .containsSequence(originalData)
@@ -165,31 +191,38 @@ public class DefaultFileSystemTest {
         File originalFile = defaultFileSystem.createFile("foo");
         assertThat(originalFile.getFileSize())
                 .as("file size")
-                .isEqualTo(0);
+                .isEqualTo(0L);
 
-        ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
-        byte[] data = "some data".getBytes();
-        byteBuffer.put(data);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(BLOCK_SIZE * 3);
+        byte[] data = "somedata".getBytes();
+        byteBuffer.put(new byte[8]);
+        for (int i = 0; i < BLOCK_SIZE * 3 - 8 - 8; i += 8) {
+            byteBuffer.put(data);
+        }
 
-        originalFile.write(byteBuffer.array(), 8);
+        byte[] array = byteBuffer.array();
+        originalFile.write(array, 0, BLOCK_SIZE * 3 - 8, 0L);
 
         assertThat(originalFile.getFileSize())
                 .as("file size")
-                .isEqualTo(4096);
+                .isEqualTo(BLOCK_SIZE * 3 - 8);
 
         File reopened = defaultFileSystem.openFile("foo");
 
-        byte[] bytes = new byte[4096 + 10];
-        reopened.read(bytes);
+        byte[] bytes = new byte[BLOCK_SIZE + 8];
+        int readBytes = reopened.read(bytes);
+        assertThat(readBytes)
+                .as("read bytes")
+                .isEqualTo(BLOCK_SIZE + 8);
         assertThat(bytes)
                 .as("initial offset gap")
                 .startsWith(new byte[8])
                 .as("read whole opened content")
-                .startsWith(ByteBuffer.allocate(4096 + 8)
+                .startsWith(ByteBuffer.allocate(data.length + 8)
                         .put(new byte[8])
                         .put(data)
                         .array())
-                .contains(0, Index.atIndex(bytes.length - 1));
+                .endsWith(data);
     }
 
     @Test
@@ -248,6 +281,6 @@ public class DefaultFileSystemTest {
         file.write(data);
         assertThat(file.getFileSize())
                 .as("file size")
-                .isEqualTo(data.length);
+                .isEqualTo((long) data.length);
     }
 }

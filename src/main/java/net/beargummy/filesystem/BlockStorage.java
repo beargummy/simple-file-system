@@ -5,63 +5,56 @@ import java.io.IOException;
 public interface BlockStorage {
 
     /**
-     * Reads up to {@code buffer.length} bytes of block data into an array of bytes.
+     * Reads up to {@code buffer.length} bytes of block buffer into an array of bytes.
      *
-     * @param index  of block to be returned
-     * @param buffer the buffer into which the data is read.
+     * @param blockNumber of block to be returned
+     * @param buffer      the buffer into which the buffer is read.
+     * @return the total number of bytes read into the buffer, or -1 if there is no more data
      * @throws NullPointerException if {@code buffer} is {@code null}.
      * @throws IOException          if an I/O error occurs.
      */
-    void readBlock(byte[] buffer, int index) throws IOException;
+    int readBlock(int blockNumber, byte[] buffer) throws IOException;
 
     /**
-     * Reads up to {@code buffer.length} bytes of block data into an array of bytes.
+     * Reads up to {@code buffer.length} bytes of block buffer into an array of bytes.
      *
-     * @param index  of block to be returned
-     * @param buffer the buffer into which the data is read.
-     * @param offset start offset in block.
+     * @param blockNumber of block to be returned
+     * @param buffer      the buffer into which the buffer is read.
+     * @param offset      offset in buffer.
+     * @param length      amount of bytes to read to buffer.
+     * @param position    start position in the block.
+     * @return the total number of bytes read into the buffer, or -1 if there is no more data
      * @throws NullPointerException if {@code buffer} is {@code null}.
      * @throws IOException          if an I/O error occurs.
      */
-    void readBlock(byte[] buffer, int index, int offset) throws IOException;
+    int readBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException;
 
     /**
-     * Writes raw data to the block.
+     * Writes raw buffer to the block.
      *
-     * @param data  block data.
-     * @param index index of block to write to.
-     * @throws IllegalArgumentException if {@code data.length} is greater than block size.
+     * @param blockNumber index of block to write to.
+     * @param buffer      buffer with data.
+     * @throws IllegalArgumentException if {@code buffer.length} is greater than block size.
      * @throws NullPointerException     if {@code buffer} is {@code null}.
      * @throws IOException              if an I/O error occurs.
      */
-    void writeBlock(byte[] data, int index) throws IOException;
+    void writeBlock(int blockNumber, byte[] buffer) throws IOException;
 
     /**
-     * Writes raw data to the block.
+     * Writes raw buffer to the block.
      *
-     * @param data   block data.
-     * @param index  index of block to write to.
-     * @param offset start offset in block.
-     * @throws IllegalArgumentException if {@code offset} plus {@code data.length} is greater than block size.
+     * @param blockNumber index of block to write to.
+     * @param buffer      buffer with data.
+     * @param offset      start offset in buffer.
+     * @param length      length of bytes to write to block. should smaller or equal to {@code buffer.length} minus {@code offset}.
+     * @param position    start position in the block.
+     * @throws IllegalArgumentException if {@code position} plus {@code length} is greater than block size.
+     * @throws IllegalArgumentException if {@code length} is greater than {@code buffer.length} minus {@code offset}.
+     * @throws IllegalArgumentException if {@code offset} plus {@code length} is greater than block size
      * @throws NullPointerException     if {@code buffer} is {@code null}.
      * @throws IOException              if an I/O error occurs.
      */
-    void writeBlock(byte[] data, int index, int offset) throws IOException;
-
-    /**
-     * Writes raw data to the block.
-     *
-     * @param data   block data.
-     * @param index  index of block to write to.
-     * @param offset start offset in block.
-     * @param length length of bytes to write to block. should smaller or equal to {@code data.length}.
-     * @throws IllegalArgumentException if {@code offset} plus {@code data.length} is greater than block size.
-     * @throws IllegalArgumentException if {@code length} is greater than {@code data.length}.
-     * @throws IllegalArgumentException if {@code offset} plus maximum of {@code data.length} and {@code length} is greater than block size
-     * @throws NullPointerException     if {@code buffer} is {@code null}.
-     * @throws IOException              if an I/O error occurs.
-     */
-    void writeBlock(byte[] data, int index, int offset, int length) throws IOException;
+    void writeBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException;
 
     /**
      * Get block size in bytes.

@@ -29,10 +29,10 @@ public class SingleFileBlockStorageTest {
     public void should_write_to_block_and_read_back() throws IOException {
         byte[] data = {1, 2, 3};
 
-        blockStorage.writeBlock(data, 0);
+        blockStorage.writeBlock(0, data);
 
         byte[] bytes = new byte[blockStorage.getBlockSize()];
-        blockStorage.readBlock(bytes, 0);
+        blockStorage.readBlock(0, bytes);
         assertThat(bytes)
                 .as("read written data back")
                 .startsWith(data);
@@ -40,7 +40,7 @@ public class SingleFileBlockStorageTest {
 
     @Test
     public void should_fail_to_write_if_index_is_incorrect() {
-        assertThatThrownBy(() -> blockStorage.writeBlock(new byte[]{}, BLOCK_COUNT))
+        assertThatThrownBy(() -> blockStorage.writeBlock(BLOCK_COUNT, new byte[]{}))
                 .as("fail to write by index greater that block counts")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Block index is out of bounds");
@@ -48,7 +48,7 @@ public class SingleFileBlockStorageTest {
 
     @Test
     public void should_fail_to_write_if_data_is_bigger_than_block_size() {
-        assertThatThrownBy(() -> blockStorage.writeBlock(new byte[BLOCK_SIZE + 1], 0))
+        assertThatThrownBy(() -> blockStorage.writeBlock(0, new byte[BLOCK_SIZE + 1]))
                 .as("fail to write data segment greater then block size")
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Data is greater than block");

@@ -19,7 +19,7 @@ public class PersistenceManagerTest {
     public static final int I_NODES_START_INDEX = 10;
     public static final int DATA_NODES_START_INDEX = 20;
 
-    private DefaultFileSystem fileSystem;
+    private DefaultFileSystem fs;
     private BlockStorage blockStorage;
 
     private PersistenceManager persistenceManager;
@@ -30,9 +30,9 @@ public class PersistenceManagerTest {
         when(blockStorage.getBlocksCount()).thenReturn(64);
         when(blockStorage.getBlockSize()).thenReturn(BLOCK_SIZE);
 
-        fileSystem = mock(DefaultFileSystem.class);
+        fs = mock(DefaultFileSystem.class);
         AtomicInteger nextBlock = new AtomicInteger();
-        when(fileSystem.allocateDNode())
+        when(fs.allocateDNode())
                 .thenAnswer(inv -> nextBlock.incrementAndGet());
 
         when(blockStorage.readBlock(anyInt(), any(byte[].class), anyInt(), anyInt(), anyInt()))
@@ -40,7 +40,7 @@ public class PersistenceManagerTest {
 
         persistenceManager = new PersistenceManager(
                 blockStorage,
-                fileSystem,
+                fs,
                 I_NODES_START_INDEX,
                 DATA_NODES_START_INDEX
         );
@@ -49,7 +49,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_rewrite_full_block() throws IOException {
         persistenceManager.writeINodeData(
-                new INode(1, FileType.DIRECTORY, BLOCK_SIZE, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.DIRECTORY, BLOCK_SIZE, Collections.singletonList(0)),
                 new byte[BLOCK_SIZE], 0, BLOCK_SIZE, 0L
         );
 
@@ -59,7 +59,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_partially_rewrite_and_append() throws IOException {
         persistenceManager.writeINodeData(
-                new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[32], 0, 16, 24L
         );
 
@@ -69,7 +69,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_partially_rewrite_first_block() throws IOException {
         persistenceManager.writeINodeData(
-                new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[16], 0, 16, 8L
         );
 
@@ -79,7 +79,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_partially_rewrite_last_block() throws IOException {
         persistenceManager.writeINodeData(
-                new INode(1, FileType.FILE, BLOCK_SIZE + 32, Arrays.asList(0, 1)),
+                new INode(fs, 1, FileType.FILE, BLOCK_SIZE + 32, Arrays.asList(0, 1)),
                 new byte[16], 0, 16, BLOCK_SIZE + 8
         );
 
@@ -87,9 +87,9 @@ public class PersistenceManagerTest {
     }
 
     @Test
-    public void should_partially_middle_last_block() throws IOException {
+    public void should_partially_rewrite_middle_last_block() throws IOException {
         persistenceManager.writeINodeData(
-                new INode(1, FileType.FILE, (BLOCK_SIZE * 2) + 32, Arrays.asList(0, 1, 2)),
+                new INode(fs, 1, FileType.FILE, (BLOCK_SIZE * 2) + 32, Arrays.asList(0, 1, 2)),
                 new byte[16], 0, 16, BLOCK_SIZE + 8
         );
 
@@ -99,7 +99,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_append_to_the_same_block() throws IOException {
         persistenceManager.writeINodeData(
-                new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[16], 0, 16, 32L
         );
 
@@ -109,7 +109,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_append_to_the_next_block() throws IOException {
         persistenceManager.writeINodeData(
-                new INode(1, FileType.FILE, BLOCK_SIZE, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, BLOCK_SIZE, Collections.singletonList(0)),
                 new byte[16], 0, 16, BLOCK_SIZE
         );
 
@@ -119,7 +119,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_append_to_current_and_next_blocks() throws IOException {
         persistenceManager.writeINodeData(
-                new INode(1, FileType.FILE, BLOCK_SIZE - 8, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, BLOCK_SIZE - 8, Collections.singletonList(0)),
                 new byte[16], 0, 16, BLOCK_SIZE - 8
         );
 
@@ -129,12 +129,12 @@ public class PersistenceManagerTest {
 
     @Test
     public void should_append_unless_space_is_available() throws IOException {
-        when(fileSystem.allocateDNode())
+        when(fs.allocateDNode())
                 .thenReturn(1)
                 .thenReturn(2)
                 .thenReturn(-1);
         int bytesWritten = persistenceManager.writeINodeData(
-                new INode(1, FileType.FILE, BLOCK_SIZE - 8, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, BLOCK_SIZE - 8, Collections.singletonList(0)),
                 new byte[BLOCK_SIZE * 3], 0, BLOCK_SIZE * 3, BLOCK_SIZE
         );
 
@@ -145,12 +145,12 @@ public class PersistenceManagerTest {
 
     @Test
     public void should_write_unless_space_is_available() throws IOException {
-        when(fileSystem.allocateDNode())
+        when(fs.allocateDNode())
                 .thenReturn(1)
                 .thenReturn(2)
                 .thenReturn(-1);
         int bytesWritten = persistenceManager.writeINodeData(
-                new INode(1, FileType.FILE, BLOCK_SIZE - 8, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, BLOCK_SIZE - 8, Collections.singletonList(0)),
                 new byte[BLOCK_SIZE * 4], 0, BLOCK_SIZE * 3 + 64, BLOCK_SIZE
         );
 
@@ -162,7 +162,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_read_full_block() throws IOException {
         persistenceManager.readINodeData(
-                new INode(1, FileType.DIRECTORY, BLOCK_SIZE, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.DIRECTORY, BLOCK_SIZE, Collections.singletonList(0)),
                 new byte[BLOCK_SIZE], 0, BLOCK_SIZE, 0L
         );
 
@@ -172,7 +172,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_read_part_of_block_up_to_max_data() throws IOException {
         int bytesRead = persistenceManager.readINodeData(
-                new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[32], 0, 16, 24L
         );
 
@@ -185,7 +185,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_read_part_of_first_block() throws IOException {
         int bytesRead = persistenceManager.readINodeData(
-                new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[32], 0, 16, 8L
         );
 
@@ -198,7 +198,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_read_part_of_last_block() throws IOException {
         int bytesRead = persistenceManager.readINodeData(
-                new INode(1, FileType.FILE, BLOCK_SIZE * 2 + 32, Arrays.asList(0, 1, 2)),
+                new INode(fs, 1, FileType.FILE, BLOCK_SIZE * 2 + 32, Arrays.asList(0, 1, 2)),
                 new byte[32], 0, 16, BLOCK_SIZE * 2 + 8
         );
 
@@ -211,7 +211,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_read_part_of_current_and_last_block() throws IOException {
         int bytesRead = persistenceManager.readINodeData(
-                new INode(1, FileType.FILE, BLOCK_SIZE + 32, Arrays.asList(0, 1)),
+                new INode(fs, 1, FileType.FILE, BLOCK_SIZE + 32, Arrays.asList(0, 1)),
                 new byte[32], 0, 16, BLOCK_SIZE - 8
         );
 
@@ -225,7 +225,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_fail_to_read_not_existing_content() throws IOException {
         int bytesRead = persistenceManager.readINodeData(
-                new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[32], 0, 16, 32L
         );
         assertThat(bytesRead)
@@ -238,7 +238,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_fail_to_read_wrong_length() throws IOException {
         assertThatThrownBy(() -> persistenceManager.readINodeData(
-                new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[32], 0, -1, 32L
         ))
                 .as("negative length exception")
@@ -249,14 +249,14 @@ public class PersistenceManagerTest {
     @Test
     public void should_fail_to_read_wrong_offset() throws IOException {
         assertThatThrownBy(() -> persistenceManager.readINodeData(
-                new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[32], -1, 1, 32L
         ))
                 .as("negative offset exception")
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(() -> persistenceManager.readINodeData(
-                new INode(1, FileType.FILE, 32, Collections.singletonList(0)),
+                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0)),
                 new byte[32], 32, 1, 32L
         ))
                 .as("negative offset exception")
@@ -267,7 +267,7 @@ public class PersistenceManagerTest {
 
     @Test
     public void should_write_iNode() throws IOException {
-        INode iNode = new INode(1, FileType.FILE, 32L, Collections.singletonList(0));
+        INode iNode = new INode(fs, 1, FileType.FILE, 32L, Collections.singletonList(0));
         persistenceManager.writeINode(iNode);
 
         verify(blockStorage, times(1)).writeBlock(eq(I_NODES_START_INDEX), any(byte[].class), eq(0), eq(INode.SIZE), eq(INode.SIZE));
@@ -276,7 +276,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_read_iNode() throws IOException {
         ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
-        INode iNode = new INode(1, FileType.FILE, 32L, Collections.singletonList(0));
+        INode iNode = new INode(fs, 1, FileType.FILE, 32L, Collections.singletonList(0));
         iNode.writeTo(byteBuffer);
         byte[] array = byteBuffer.flip().array();
 

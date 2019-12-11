@@ -22,18 +22,18 @@ class DefaultFile implements File {
     @Override
     public int read(byte[] buffer) throws IOException {
         assertBufferNonNull(buffer);
-        return read(buffer, 0, buffer.length);
+        return read(buffer, 0, buffer.length, 0L);
     }
 
     @Override
-    public int read(byte[] buffer, int offset, int length) throws IOException {
+    public int read(byte[] buffer, int offset, int length, long position) throws IOException {
         assertBufferNonNull(buffer);
         assertPositiveOffset(offset);
 
-        if (iNode.getDataBlocks().isEmpty()) {
+        if (iNode.getDataBlocksCount() == 0) {
             return 0;
         }
-        return fs.readINodeData(iNode, buffer, offset, length, 0L);
+        return fs.readINodeData(iNode, buffer, offset, length, position);
     }
 
     @Override

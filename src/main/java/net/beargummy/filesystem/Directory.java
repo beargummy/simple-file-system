@@ -11,7 +11,7 @@ class Directory {
 
     Directory(DefaultFileSystem fs, int iNodeNumber, int dataBlock) {
         this.fs = fs;
-        this.iNode = new INode(iNodeNumber, FileType.DIRECTORY, fs.getBlockSize(), Collections.singletonList(dataBlock));
+        this.iNode = new INode(fs, iNodeNumber, FileType.DIRECTORY, fs.getBlockSize(), Collections.singletonList(dataBlock));
     }
 
     Directory(DefaultFileSystem fs, INode iNode) {

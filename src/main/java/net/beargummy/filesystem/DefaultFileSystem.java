@@ -106,7 +106,7 @@ class DefaultFileSystem implements FileSystem {
 
             int indexNodeNumber = indexNodeBitMap.allocate();
             writeBitMap(indexNodeBitMap, I_NODE_BIT_MAP_BLOCK_NUMBER);
-            INode fileINode = new INode(indexNodeNumber, FileType.FILE, 0L, Collections.emptyList());
+            INode fileINode = new INode(this, indexNodeNumber, FileType.FILE, 0L, Collections.emptyList());
             persistenceManager.writeINode(fileINode);
             current.addFile(fileName, fileINode);
 
@@ -132,7 +132,7 @@ class DefaultFileSystem implements FileSystem {
             if (dirINode == -1) {
                 int iNodeNumber = indexNodeBitMap.allocate();
                 int dNodeNumber = dataNodeBitMap.allocate();
-                directoryINode = new INode(iNodeNumber, FileType.DIRECTORY, getBlockSize(), Collections.singletonList(dNodeNumber));
+                directoryINode = new INode(this, iNodeNumber, FileType.DIRECTORY, getBlockSize(), Collections.singletonList(dNodeNumber));
                 persistenceManager.writeINode(directoryINode);
                 current.addFile(directoryName, directoryINode);
             } else {
@@ -208,8 +208,8 @@ class DefaultFileSystem implements FileSystem {
                 }
             }
 
-            for (Integer dataBlock : fileINode.getDataBlocks()) {
-                dataNodeBitMap.free(dataBlock);
+            for (int dataBlockIndex = 0; dataBlockIndex < fileINode.getDataBlocksCount(); dataBlockIndex++) {
+                dataNodeBitMap.free(fileINode.getBlockByIndex(dataBlockIndex));
             }
             writeBitMap(dataNodeBitMap, DATA_NODE_BIT_MAP_BLOCK_NUMBER);
 
@@ -272,6 +272,14 @@ class DefaultFileSystem implements FileSystem {
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    int readDataBlock(byte[] buffer, int offset, int length, int position, int block) throws IOException {
+        return persistenceManager.readDataBlock(buffer, offset, length, position, block);
+    }
+
+    void writeDataBlock(byte[] buffer, int offset, int length, int position, int block) throws IOException {
+        persistenceManager.writeDataBlock(buffer, offset, length, position, block);
     }
 
     private void writeBitMap(BitMap bitMap, int blockNumber) throws IOException {

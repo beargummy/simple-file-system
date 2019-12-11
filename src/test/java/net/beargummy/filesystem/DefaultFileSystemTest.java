@@ -147,7 +147,7 @@ public class DefaultFileSystemTest {
                 .isEqualTo(data.length);
 
         byte[] bytes = new byte[BLOCK_SIZE];
-        int readBytes = file.read(bytes, 0, BLOCK_SIZE);
+        int readBytes = file.read(bytes, 0, BLOCK_SIZE, 0L);
         assertThat(readBytes)
                 .as("bytes read")
                 .isEqualTo(data.length);
@@ -175,7 +175,7 @@ public class DefaultFileSystemTest {
         File reopened = defaultFileSystem.openFile("foo");
 
         byte[] bytes = new byte[BLOCK_SIZE];
-        int readBytes = reopened.read(bytes, 0, BLOCK_SIZE);
+        int readBytes = reopened.read(bytes, 0, BLOCK_SIZE, 0L);
         assertThat(readBytes)
                 .as("bytes read")
                 .isEqualTo(originalData.length);

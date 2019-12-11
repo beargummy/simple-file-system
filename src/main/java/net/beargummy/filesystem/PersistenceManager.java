@@ -2,7 +2,6 @@ package net.beargummy.filesystem;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 class PersistenceManager {
 
@@ -33,7 +32,7 @@ class PersistenceManager {
 
         byte[] array = byteBuffer.array();
         blockStorage.readBlock(iNodeBlock, array, 0, iNodeLength, iNodePositionInBlock);
-        return new INode(byteBuffer);
+        return new INode(fileSystem, byteBuffer);
     }
 
     void writeINode(INode iNode) throws IOException {
@@ -51,8 +50,8 @@ class PersistenceManager {
         verifyArguments(buffer, offset, length, position);
 
         int bytesRead = 0;
-        List<Integer> dataBlocks = iNode.getDataBlocks();
-        if (position / blockSize > dataBlocks.size()) {
+        int dataBlocksCount = iNode.getDataBlocksCount();
+        if (position / blockSize > dataBlocksCount) {
             return 0;
         }
 
@@ -66,7 +65,7 @@ class PersistenceManager {
         int blocksNeeded = position + bytesToRead > blockSize
                 ? (int) ((position + bytesToRead - 1) / blockSize) + 1
                 : 1;
-        blocksNeeded = Math.min(blocksNeeded, dataBlocks.size());
+        blocksNeeded = Math.min(blocksNeeded, dataBlocksCount);
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(blockSize);
 
@@ -77,9 +76,9 @@ class PersistenceManager {
             int currentLength = bytesToRead >= blockSize
                     ? blockSize
                     : Math.min(bytesToRead, blockSize - currentPosition);
-            int currentBlockNumber = dataBlocks.get(block);
+            int currentBlockNumber = iNode.getBlockByIndex(block);
 
-            int fetchedFromBS = blockStorage.readBlock(dataNodesStartIndex + currentBlockNumber, byteBuffer.rewind().array(), 0, currentLength, currentPosition);
+            int fetchedFromBS = blockStorage.readBlock(dataNodesStartIndex + currentBlockNumber, byteBuffer.clear().array(), 0, currentLength, currentPosition);
             if (fetchedFromBS == -1) {
                 return bytesRead;
             }
@@ -91,6 +90,24 @@ class PersistenceManager {
             }
         }
         return bytesRead;
+    }
+
+    void writeDataBlock(byte[] data, int offset, int length, int position, int block) throws IOException {
+        verifyArguments(data, offset, length, position);
+        if (length + position > blockSize) {
+            throw new IllegalArgumentException("Length is greater than block size");
+        }
+
+        blockStorage.writeBlock(dataNodesStartIndex + block, data, offset, length, position);
+    }
+
+    int readDataBlock(byte[] buffer, int offset, int length, int position, int block) throws IOException {
+        verifyArguments(buffer, offset, length, position);
+        if (length + position > blockSize) {
+            throw new IllegalArgumentException("Length is greater than block size");
+        }
+
+        return blockStorage.readBlock(dataNodesStartIndex + block, buffer, offset, length, position);
     }
 
     int writeINodeData(INode iNode, byte[] data, int offset, int length, long position) throws IOException {
@@ -115,7 +132,7 @@ class PersistenceManager {
             } else {
                 currentLength = Math.min(blockSize, length) - currentBlockPosition % Math.min(blockSize, length);
             }
-            int currentBlockNumber = getNextBlock(block, iNode);
+            int currentBlockNumber = iNode.getOrCreateBlockByIndex(block);
             if (currentBlockNumber == -1) {
                 break;
             }
@@ -127,18 +144,6 @@ class PersistenceManager {
 
         iNode.setSize(newSize);
         return bytesWritten;
-    }
-
-    private int getNextBlock(int block, INode iNode) {
-        if (block < iNode.getDataBlocks().size()) {
-            return iNode.getDataBlocks().get(block);
-        }
-
-        int dataBlock = fileSystem.allocateDNode();
-        if (dataBlock != -1) {
-            iNode.assignDataBlock(dataBlock);
-        }
-        return dataBlock;
     }
 
     BitMap readBitMap(int blockNumber) throws IOException {
@@ -174,5 +179,4 @@ class PersistenceManager {
             throw new IllegalArgumentException("Position is negative");
         }
     }
-
 }

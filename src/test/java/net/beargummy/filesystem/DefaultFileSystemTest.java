@@ -159,6 +159,34 @@ public class DefaultFileSystemTest {
     }
 
     @Test
+    public void should_append_content_to_file_and_read_back() throws IOException {
+        File file = defaultFileSystem.createFile("foo");
+        assertThat(file.getFileSize())
+                .as("file size")
+                .isEqualTo(0L);
+
+        byte[] data = "Some data".getBytes();
+        file.write(data);
+
+        assertThat(file.getFileSize())
+                .as("file size")
+                .isEqualTo(data.length);
+
+        file.append(data);
+
+        byte[] bytes = new byte[BLOCK_SIZE];
+        int readBytes = file.read(bytes, 0, BLOCK_SIZE, 0L);
+        assertThat(readBytes)
+                .as("bytes read")
+                .isEqualTo(data.length * 2);
+        assertThat(bytes)
+                .as("read content")
+                .containsSequence(data)
+                .as("non-written content")
+                .contains(0, Index.atIndex(bytes.length - 1));
+    }
+
+    @Test
     public void should_write_content_to_file_and_read_back_after_open() throws IOException {
         File originalFile = defaultFileSystem.createFile("foo");
         assertThat(originalFile.getFileSize())

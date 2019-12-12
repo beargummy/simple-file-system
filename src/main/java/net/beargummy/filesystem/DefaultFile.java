@@ -53,8 +53,18 @@ class DefaultFile implements File {
     }
 
     @Override
+    public int append(byte[] buffer) throws IOException {
+        assertBufferNonNull(buffer);
+        return append(buffer, 0, buffer.length);
+    }
+
+    @Override
     public int append(byte[] buffer, int offset, int length) throws IOException {
-        throw new IllegalStateException("not implemented yet");
+        assertBufferNonNull(buffer);
+        assertPositiveOffset(offset);
+        assertValidLength(buffer, offset, length);
+
+        return fs.writeINodeData(iNode, buffer, offset, length, iNode.getSize());
     }
 
     private void assertPositiveOffset(int offset) {

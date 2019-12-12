@@ -17,7 +17,7 @@ which contains basic CRUD scenarios.
 
 ## TODOs
 - [x] Basic file operations support: create, write, read, delete.
-- [ ] Append data to file support.
+- [x] Append data to file support.
 - [x] Concurrency control.
 - [x] Multi-block files support.
 - [x] Directories support.

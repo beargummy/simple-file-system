@@ -64,6 +64,17 @@ public interface File {
      */
     int write(byte[] buffer, int offset, int length, long position) throws IOException;
 
+
+    /**
+     * Writes {@code length} bytes from the specified byte array to this file.
+     *
+     * @param buffer the buffer.
+     * @throws IllegalArgumentException if {@code offset} is negative.
+     * @throws NullPointerException     if {@code buffer} is {@code null}.
+     * @throws IOException              if an I/O error occurs.
+     */
+    int append(byte[] buffer) throws IOException;
+
     /**
      * Writes {@code length} bytes from the specified byte array
      * starting at {@code offset} of {@code buffer} to this file.

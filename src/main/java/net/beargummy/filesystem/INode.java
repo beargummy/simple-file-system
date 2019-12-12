@@ -10,39 +10,39 @@ import java.util.stream.Collectors;
 class INode implements ByteBufferSerializable {
 
     static final int SIZE = 4 // typeTag
-            + 4 // iNodeNumber
+            + 8 // iNodeNumber
             + 4 // type
             + 8 // size
-            + 4 // dataBlocksCount
-            + 12 * 4 // directDataBlocks
-            + 4 // indirectDataBlock
-            + 4 // doubleIndirectDataBlock
+            + 8 // dataBlocksCount
+            + 12 * 8 // directDataBlocks
+            + 8 // indirectDataBlock
+            + 8 // doubleIndirectDataBlock
             ;
 
     private static final int typeTag = 2096414118;
 
     private final DefaultFileSystem fs;
 
-    private final int iNodeNumber;
+    private final long iNodeNumber;
     private final FileType type;
     private long size;
 
-    private int dataBlocksCount;
+    private long dataBlocksCount;
 
     private final int directDataBlocksMaxCount = 12;
     // up to 12 direct data blocks
-    private List<Integer> directDataBlocks;
+    private List<Long> directDataBlocks;
 
-    private int indirectDataBlockNode;
-    private final int indirectDataBlocksMaxCount;
+    private long indirectDataBlockNode;
+    private final long indirectDataBlocksMaxCount;
 
-    private int doubleIndirectDataBlockNode;
-    private final int doubleIndirectDataBlocksMaxCount;
+    private long doubleIndirectDataBlockNode;
+    private final long doubleIndirectDataBlocksMaxCount;
 
-    public INode(DefaultFileSystem fs, int iNodeNumber, FileType fileType, long size, List<Integer> dataBlocks) {
+    public INode(DefaultFileSystem fs, long iNodeNumber, FileType fileType, long size, List<Long> dataBlocks) {
         this.fs = fs;
-        this.indirectDataBlocksMaxCount = fs.getBlockSize() / 4;
-        this.doubleIndirectDataBlocksMaxCount = (fs.getBlockSize() / 4) * (fs.getBlockSize() / 4);
+        this.indirectDataBlocksMaxCount = fs.getBlockSize() / 8;
+        this.doubleIndirectDataBlocksMaxCount = (fs.getBlockSize() / 8) * (fs.getBlockSize() / 8);
 
         this.iNodeNumber = iNodeNumber;
         this.type = fileType;
@@ -54,35 +54,35 @@ class INode implements ByteBufferSerializable {
 
     INode(DefaultFileSystem fs, ByteBuffer byteBuffer) {
         this.fs = fs;
-        this.indirectDataBlocksMaxCount = fs.getBlockSize() / 4;
-        this.doubleIndirectDataBlocksMaxCount = (fs.getBlockSize() / 4) * (fs.getBlockSize() / 4);
+        this.indirectDataBlocksMaxCount = fs.getBlockSize() / 8;
+        this.doubleIndirectDataBlocksMaxCount = (fs.getBlockSize() / 8) * (fs.getBlockSize() / 8);
 
         if (typeTag != byteBuffer.getInt()) {
             throw new IllegalArgumentException("TypeTag mismatched");
         }
-        this.iNodeNumber = byteBuffer.getInt();
+        this.iNodeNumber = byteBuffer.getLong();
         this.type = FileType.valueOf(byteBuffer.getInt());
         this.size = byteBuffer.getLong();
-        this.dataBlocksCount = byteBuffer.getInt();
-        int directDataBlocksCount = Math.min(dataBlocksCount, directDataBlocksMaxCount);
+        this.dataBlocksCount = byteBuffer.getLong();
+        int directDataBlocksCount = (int) Math.min(dataBlocksCount, directDataBlocksMaxCount);
         this.directDataBlocks = new ArrayList<>(directDataBlocksCount);
         for (int i = 0; i < directDataBlocksCount; i++) {
-            directDataBlocks.add(byteBuffer.getInt());
+            directDataBlocks.add(byteBuffer.getLong());
         }
     }
 
-    int getDataBlocksCount() {
+    long getDataBlocksCount() {
         return dataBlocksCount;
     }
 
-    int getBlockByIndex(int index) throws IOException {
-        int currentIndex = index;
+    long getBlockByIndex(long index) throws IOException {
+        long currentIndex = index;
         if (currentIndex >= dataBlocksCount) {
             return -1;
         }
 
         if (currentIndex < directDataBlocksMaxCount) {
-            return directDataBlocks.get(index);
+            return directDataBlocks.get((int) index);
         }
 
         currentIndex -= directDataBlocksMaxCount;
@@ -98,28 +98,28 @@ class INode implements ByteBufferSerializable {
         return -1;
     }
 
-    private int getDoubleIndirectDataBlockByIndex(int currentIndex) throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(4);
-        int indirectDataBlockOffset = (currentIndex / getInodesPerBlock()) * 4;
-        fs.readDataBlock(buffer.array(), 0, 4, indirectDataBlockOffset, doubleIndirectDataBlockNode);
-        int allocatedIndirectBlock = buffer.getInt();
-        int position = (currentIndex % getInodesPerBlock()) * 4;
-        fs.readDataBlock(buffer.clear().array(), 0, 4, position, allocatedIndirectBlock);
+    private long getDoubleIndirectDataBlockByIndex(long currentIndex) throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(8);
+        long indirectDataBlockOffset = (currentIndex / getInodesPerBlock()) * 8;
+        fs.readDataBlock(buffer.array(), 0, 8, indirectDataBlockOffset, doubleIndirectDataBlockNode);
+        long allocatedIndirectBlock = buffer.getLong();
+        long position = (currentIndex % getInodesPerBlock()) * 8;
+        fs.readDataBlock(buffer.clear().array(), 0, 8, position, allocatedIndirectBlock);
 
-        return buffer.getInt();
+        return buffer.getLong();
     }
 
-    private int getIndirectBlockByIndex(int currentIndex) throws IOException {
-        ByteBuffer buffer = ByteBuffer.allocate(4);
-        int position = currentIndex * 4;
-        int readBytes = fs.readDataBlock(buffer.array(), 0, 4, position, indirectDataBlockNode);
-        if (readBytes != 4) {
+    private long getIndirectBlockByIndex(long currentIndex) throws IOException {
+        ByteBuffer buffer = ByteBuffer.allocate(8);
+        long position = currentIndex * 8;
+        int readBytes = fs.readDataBlock(buffer.array(), 0, 8, position, indirectDataBlockNode);
+        if (readBytes != 8) {
             return -1;
         }
-        return buffer.getInt();
+        return buffer.getLong();
     }
 
-    int getOrCreateBlockByIndex(int index) throws IOException {
+    long getOrCreateBlockByIndex(long index) throws IOException {
         if (index < dataBlocksCount) {
             return getBlockByIndex(index);
         }
@@ -127,16 +127,16 @@ class INode implements ByteBufferSerializable {
         return allocate();
     }
 
-    private int allocate() throws IOException {
-        int dNode = doAllocate();
+    private long allocate() throws IOException {
+        long dNode = doAllocate();
         if (dNode >= 0) {
             dataBlocksCount += 1;
         }
         return dNode;
     }
 
-    private int doAllocate() throws IOException {
-        int currentDataBlockIndex = dataBlocksCount;
+    private long doAllocate() throws IOException {
+        long currentDataBlockIndex = dataBlocksCount;
         if (currentDataBlockIndex < directDataBlocksMaxCount) {
             return allocateDirectBlock();
         }
@@ -154,8 +154,8 @@ class INode implements ByteBufferSerializable {
         return -1;
     }
 
-    private int allocateDirectBlock() {
-        int dataBlock = fs.allocateDNode();
+    private long allocateDirectBlock() {
+        long dataBlock = fs.allocateDNode();
         if (dataBlock < 0) {
             return -1;
         }
@@ -163,79 +163,79 @@ class INode implements ByteBufferSerializable {
         return dataBlock;
     }
 
-    private int allocateIndirectDataBlock(int currentDataBlockIndex) throws IOException {
+    private long allocateIndirectDataBlock(long currentDataBlockIndex) throws IOException {
         if (currentDataBlockIndex == 0 && indirectDataBlockNode <= 0) {
-            int allocatedDNode = fs.allocateDNode();
+            long allocatedDNode = fs.allocateDNode();
             if (allocatedDNode < 0) {
                 return -1;
             }
             indirectDataBlockNode = allocatedDNode;
         }
-        int dataBlock = fs.allocateDNode();
+        long dataBlock = fs.allocateDNode();
         if (dataBlock < 0) {
             return -1;
         }
 
-        ByteBuffer buffer = ByteBuffer.allocate(4).putInt(dataBlock);
-        fs.writeDataBlock(buffer.array(), 0, 4, currentDataBlockIndex * 4, indirectDataBlockNode);
+        ByteBuffer buffer = ByteBuffer.allocate(8).putLong(dataBlock);
+        fs.writeDataBlock(buffer.array(), 0, 8, currentDataBlockIndex * 8, indirectDataBlockNode);
         return dataBlock;
     }
 
-    private int allocateDoubleIndirectDataBlock(int currentDataBlockIndex) throws IOException {
+    private long allocateDoubleIndirectDataBlock(long currentDataBlockIndex) throws IOException {
         if (currentDataBlockIndex == 0 && doubleIndirectDataBlockNode <= 0) {
-            int allocatedDNode = fs.allocateDNode();
+            long allocatedDNode = fs.allocateDNode();
             if (allocatedDNode < 0) {
                 return -1;
             }
             this.doubleIndirectDataBlockNode = allocatedDNode;
         }
 
-        int indirectDataBlockOffset = (currentDataBlockIndex / indirectDataBlocksMaxCount) * 4;
-        int allocatedIndirectBlock;
+        long indirectDataBlockOffset = (currentDataBlockIndex / indirectDataBlocksMaxCount) * 8;
+        long allocatedIndirectBlock;
         if (currentDataBlockIndex % indirectDataBlocksMaxCount == 0) {
             allocatedIndirectBlock = fs.allocateDNode();
             if (allocatedIndirectBlock < 0) {
                 return -1;
             }
-            ByteBuffer buffer = ByteBuffer.allocate(4).putInt(allocatedIndirectBlock);
-            fs.writeDataBlock(buffer.array(), 0, 4, indirectDataBlockOffset, doubleIndirectDataBlockNode);
+            ByteBuffer buffer = ByteBuffer.allocate(8).putLong(allocatedIndirectBlock);
+            fs.writeDataBlock(buffer.array(), 0, 8, indirectDataBlockOffset, doubleIndirectDataBlockNode);
         } else {
-            ByteBuffer buffer = ByteBuffer.allocate(4);
-            fs.readDataBlock(buffer.array(), 0, 4, indirectDataBlockOffset, doubleIndirectDataBlockNode);
-            allocatedIndirectBlock = buffer.getInt();
+            ByteBuffer buffer = ByteBuffer.allocate(8);
+            fs.readDataBlock(buffer.array(), 0, 8, indirectDataBlockOffset, doubleIndirectDataBlockNode);
+            allocatedIndirectBlock = buffer.getLong();
         }
 
-        int dataBlock = fs.allocateDNode();
+        long dataBlock = fs.allocateDNode();
         if (dataBlock < 0) {
             return -1;
         }
 
-        ByteBuffer allocate = ByteBuffer.allocate(4).putInt(dataBlock);
-        int position = (currentDataBlockIndex % indirectDataBlocksMaxCount) * 4;
-        fs.writeDataBlock(allocate.array(), 0, 4, position, allocatedIndirectBlock);
+        ByteBuffer allocate = ByteBuffer.allocate(8).putLong(dataBlock);
+        long position = (currentDataBlockIndex % indirectDataBlocksMaxCount) * 8;
+        fs.writeDataBlock(allocate.array(), 0, 8, position, allocatedIndirectBlock);
 
         return dataBlock;
     }
 
-    private int getInodesPerBlock() {
+    private long getInodesPerBlock() {
         return indirectDataBlocksMaxCount;
     }
 
     public void writeTo(ByteBuffer byteBuffer) {
         byteBuffer
                 .putInt(typeTag)
-                .putInt(iNodeNumber)
+                .putLong(iNodeNumber)
                 .putInt(type.getCode())
                 .putLong(size)
-                .putInt(dataBlocksCount);
+                .putLong(dataBlocksCount);
         for (int i = 0; i < Math.min(directDataBlocksMaxCount, dataBlocksCount); i++) {
-            byteBuffer.putInt(directDataBlocks.get(i));
+            byteBuffer.putLong(directDataBlocks.get(i));
         }
-        byteBuffer.putInt(indirectDataBlockNode)
-                .putInt(doubleIndirectDataBlockNode);
+        byteBuffer.putLong(indirectDataBlockNode)
+                .putLong(doubleIndirectDataBlockNode);
     }
 
-    int getINodeNumber() {
+    long getINodeNumber() {
         return iNodeNumber;
     }
 

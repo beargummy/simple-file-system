@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class DefaultFileSystemBigFileTest {
 
     public static final int BLOCK_SIZE = 1024;
+    public static final int BLOCK_COUNT = 4096;
     private FileSystem defaultFileSystem;
 
     @Before
@@ -20,7 +21,7 @@ public class DefaultFileSystemBigFileTest {
         file.deleteOnExit();
         DefaultFileSystem defaultFileSystem = new DefaultFileSystem(
                 1,
-                new SingleFileBlockStorage(new RandomAccessFile(file, "rw"), BLOCK_SIZE, 4096)
+                new SingleFileBlockStorage(new RandomAccessFile(file, "rw"), BLOCK_SIZE, BLOCK_COUNT)
         );
         defaultFileSystem.initFileSystem();
         this.defaultFileSystem = defaultFileSystem;

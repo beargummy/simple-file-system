@@ -4,25 +4,25 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 class DirectoryRecord implements ByteBufferSerializable {
-    static final int MIN_SIZE = 4 * 4;
+    static final int MIN_SIZE = 3 * 4 + 8;
 
     FileType recordType;
     int recordSize;
-    int iNodeNumber;
+    long iNodeNumber;
     int nameSize;
     String name;
 
     DirectoryRecord(ByteBuffer byteBuffer) {
         this.recordType = FileType.valueOf(byteBuffer.getInt());
         this.recordSize = byteBuffer.getInt();
-        this.iNodeNumber = byteBuffer.getInt();
+        this.iNodeNumber = byteBuffer.getLong();
         this.nameSize = byteBuffer.getInt();
         byte[] nameBytes = new byte[nameSize];
         byteBuffer.get(nameBytes);
         this.name = new String(nameBytes);
     }
 
-    DirectoryRecord(FileType fileType, int iNodeNumber, String name) {
+    DirectoryRecord(FileType fileType, long iNodeNumber, String name) {
         this.recordType = fileType;
         this.recordSize = nameSize + MIN_SIZE;
         this.iNodeNumber = iNodeNumber;
@@ -35,7 +35,7 @@ class DirectoryRecord implements ByteBufferSerializable {
         byteBuffer
                 .putInt(recordType.getCode())
                 .putInt(recordSize)
-                .putInt(iNodeNumber)
+                .putLong(iNodeNumber)
                 .putInt(nameSize);
         if (nameSize > 0) {
             byteBuffer.put(name.getBytes());

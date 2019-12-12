@@ -9,7 +9,7 @@ class Directory {
     private DefaultFileSystem fs;
     private INode iNode;
 
-    Directory(DefaultFileSystem fs, int iNodeNumber, int dataBlock) {
+    Directory(DefaultFileSystem fs, long iNodeNumber, long dataBlock) {
         this.fs = fs;
         this.iNode = new INode(fs, iNodeNumber, FileType.DIRECTORY, fs.getBlockSize(), Collections.singletonList(dataBlock));
     }
@@ -60,7 +60,7 @@ class Directory {
         return getFileINodeNumber(name) != -1;
     }
 
-    int getFileINodeNumber(String name) throws IOException {
+    long getFileINodeNumber(String name) throws IOException {
         return getDirectoryData()
                 .getFileINodeNumber(name);
     }

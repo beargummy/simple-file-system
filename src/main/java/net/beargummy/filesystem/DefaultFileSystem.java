@@ -10,17 +10,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 class DefaultFileSystem implements FileSystem {
 
-    private static final int SUPER_BLOCK_NUMBER = 0;
-    private static final int I_NODE_BIT_MAP_BLOCK_NUMBER = 1;
-    private static final int DATA_NODE_BIT_MAP_BLOCK_NUMBER = 2;
-    private static final int ALWAYS_OCCUPIED_BLOCKS = 3;
+    private static final long SUPER_BLOCK_NUMBER = 0;
+    private static final long I_NODE_BIT_MAP_BLOCK_NUMBER = 1;
+    private static final long DATA_NODE_BIT_MAP_BLOCK_NUMBER = 2;
+    private static final long ALWAYS_OCCUPIED_BLOCKS = 3;
 
     private static final String DEFAULT_PATH_SEPARATOR = "/";
 
     private final ReadWriteLock lock;
 
-    private final int numINodes;
-    private final int numDNodes;
+    private final long numINodes;
+    private final long numDNodes;
 
     private final BlockStorage blockStorage;
 
@@ -44,10 +44,10 @@ class DefaultFileSystem implements FileSystem {
     DefaultFileSystem(int blocksPerInodeRatio, String pathSeparator, BlockStorage blockStorage) {
         this.numINodes = blockStorage.getBlocksCount() / blocksPerInodeRatio;
 
-        int iNodesStartIndex = ALWAYS_OCCUPIED_BLOCKS;
-        int iNodeBlocks = (int) Math.ceil((double) numINodes * INode.SIZE / blockStorage.getBlockSize());
+        long iNodesStartIndex = ALWAYS_OCCUPIED_BLOCKS;
+        long iNodeBlocks = (long) Math.ceil((double) numINodes * INode.SIZE / blockStorage.getBlockSize());
 
-        int dataNodesStartIndex = iNodesStartIndex + iNodeBlocks;
+        long dataNodesStartIndex = iNodesStartIndex + iNodeBlocks;
         this.numDNodes = blockStorage.getBlocksCount() - dataNodesStartIndex;
 
         this.blockStorage = blockStorage;
@@ -62,11 +62,11 @@ class DefaultFileSystem implements FileSystem {
         lock.writeLock().lock();
         try {
             indexNodeBitMap = new BitMap(numINodes);
-            int rootINodeNumber = indexNodeBitMap.allocate();
+            long rootINodeNumber = indexNodeBitMap.allocate();
             writeBitMap(indexNodeBitMap, I_NODE_BIT_MAP_BLOCK_NUMBER);
 
             dataNodeBitMap = new BitMap(numDNodes);
-            int rootDNodeNumber = dataNodeBitMap.allocate();
+            long rootDNodeNumber = dataNodeBitMap.allocate();
             writeBitMap(dataNodeBitMap, DATA_NODE_BIT_MAP_BLOCK_NUMBER);
 
             rootDirectory = new Directory(this, rootINodeNumber, rootDNodeNumber);
@@ -104,7 +104,7 @@ class DefaultFileSystem implements FileSystem {
                 throw new IllegalArgumentException("File name already created: " + name);
             }
 
-            int indexNodeNumber = indexNodeBitMap.allocate();
+            long indexNodeNumber = indexNodeBitMap.allocate();
             writeBitMap(indexNodeBitMap, I_NODE_BIT_MAP_BLOCK_NUMBER);
             INode fileINode = new INode(this, indexNodeNumber, FileType.FILE, 0L, Collections.emptyList());
             persistenceManager.writeINode(fileINode);
@@ -127,11 +127,11 @@ class DefaultFileSystem implements FileSystem {
     private Directory mkdirs(Directory parent, List<String> dirs) throws IOException {
         Directory current = parent;
         for (String directoryName : dirs) {
-            int dirINode = current.getFileINodeNumber(directoryName);
+            long dirINode = current.getFileINodeNumber(directoryName);
             INode directoryINode;
             if (dirINode == -1) {
-                int iNodeNumber = indexNodeBitMap.allocate();
-                int dNodeNumber = dataNodeBitMap.allocate();
+                long iNodeNumber = indexNodeBitMap.allocate();
+                long dNodeNumber = dataNodeBitMap.allocate();
                 directoryINode = new INode(this, iNodeNumber, FileType.DIRECTORY, getBlockSize(), Collections.singletonList(dNodeNumber));
                 persistenceManager.writeINode(directoryINode);
                 current.addFile(directoryName, directoryINode);
@@ -156,7 +156,7 @@ class DefaultFileSystem implements FileSystem {
             String fileName = pathParts.remove(pathParts.size() - 1);
 
             Directory current = getLastDirectory(pathParts);
-            int fileINodeNumber = current.getFileINodeNumber(fileName);
+            long fileINodeNumber = current.getFileINodeNumber(fileName);
             if (fileINodeNumber == -1) {
                 throw new FileNotFoundException("File does not exist: " + name);
             }
@@ -174,7 +174,7 @@ class DefaultFileSystem implements FileSystem {
     private Directory getLastDirectory(List<String> pathParts) throws IOException {
         Directory current = rootDirectory;
         for (String directoryName : pathParts) {
-            int directoryINodeNumber = current.getFileINodeNumber(directoryName);
+            long directoryINodeNumber = current.getFileINodeNumber(directoryName);
             if (directoryINodeNumber == -1) {
                 throw new FileNotFoundException("File does not exist: " + directoryName);
             }
@@ -195,7 +195,7 @@ class DefaultFileSystem implements FileSystem {
 
             Directory current = getLastDirectory(pathParts);
 
-            int fileINodeNumber = current.getFileINodeNumber(fileName);
+            long fileINodeNumber = current.getFileINodeNumber(fileName);
             if (fileINodeNumber == -1) {
                 throw new FileNotFoundException("File does not exist: " + name);
             }
@@ -274,15 +274,15 @@ class DefaultFileSystem implements FileSystem {
         }
     }
 
-    int readDataBlock(byte[] buffer, int offset, int length, int position, int block) throws IOException {
+    int readDataBlock(byte[] buffer, int offset, int length, long position, long block) throws IOException {
         return persistenceManager.readDataBlock(buffer, offset, length, position, block);
     }
 
-    void writeDataBlock(byte[] buffer, int offset, int length, int position, int block) throws IOException {
+    void writeDataBlock(byte[] buffer, int offset, int length, long position, long block) throws IOException {
         persistenceManager.writeDataBlock(buffer, offset, length, position, block);
     }
 
-    private void writeBitMap(BitMap bitMap, int blockNumber) throws IOException {
+    private void writeBitMap(BitMap bitMap, long blockNumber) throws IOException {
         persistenceManager.writeBitMap(bitMap, blockNumber);
     }
 
@@ -290,7 +290,7 @@ class DefaultFileSystem implements FileSystem {
         return blockStorage.getBlockSize();
     }
 
-    int allocateDNode() {
+    long allocateDNode() {
         return dataNodeBitMap.allocate();
     }
 }

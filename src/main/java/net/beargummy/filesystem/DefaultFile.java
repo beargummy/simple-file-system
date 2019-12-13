@@ -26,11 +26,21 @@ class DefaultFile implements File {
     }
 
     @Override
+    public int read(byte[] buffer, long position) throws IOException {
+        assertBufferNonNull(buffer);
+        return read(buffer, 0, buffer.length, position);
+    }
+
+    @Override
     public int read(byte[] buffer, int offset, int length, long position) throws IOException {
         assertBufferNonNull(buffer);
         assertPositiveOffset(offset);
+        assertPositivePosition(position);
 
         if (iNode.getDataBlocksCount() == 0) {
+            return 0;
+        }
+        if (position >= getFileSize()) {
             return 0;
         }
         return fs.readINodeData(iNode, buffer, offset, length, position);
@@ -70,6 +80,11 @@ class DefaultFile implements File {
     private void assertPositiveOffset(int offset) {
         if (offset < 0)
             throw new IllegalArgumentException("Offset cannot be negative");
+    }
+
+    private void assertPositivePosition(long position) {
+        if (position < 0)
+            throw new IllegalArgumentException("Position cannot be negative");
     }
 
     private void assertBufferNonNull(byte[] buffer) {

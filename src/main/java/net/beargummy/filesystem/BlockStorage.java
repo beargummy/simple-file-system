@@ -13,7 +13,7 @@ public interface BlockStorage {
      * @throws NullPointerException if {@code buffer} is {@code null}.
      * @throws IOException          if an I/O error occurs.
      */
-    int readBlock(int blockNumber, byte[] buffer) throws IOException;
+    int readBlock(long blockNumber, byte[] buffer) throws IOException;
 
     /**
      * Reads up to {@code buffer.length} bytes of block buffer into an array of bytes.
@@ -27,7 +27,7 @@ public interface BlockStorage {
      * @throws NullPointerException if {@code buffer} is {@code null}.
      * @throws IOException          if an I/O error occurs.
      */
-    int readBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException;
+    int readBlock(long blockNumber, byte[] buffer, int offset, int length, long position) throws IOException;
 
     /**
      * Writes raw buffer to the block.
@@ -38,7 +38,7 @@ public interface BlockStorage {
      * @throws NullPointerException     if {@code buffer} is {@code null}.
      * @throws IOException              if an I/O error occurs.
      */
-    void writeBlock(int blockNumber, byte[] buffer) throws IOException;
+    void writeBlock(long blockNumber, byte[] buffer) throws IOException;
 
     /**
      * Writes raw buffer to the block.
@@ -54,7 +54,7 @@ public interface BlockStorage {
      * @throws NullPointerException     if {@code buffer} is {@code null}.
      * @throws IOException              if an I/O error occurs.
      */
-    void writeBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException;
+    void writeBlock(long blockNumber, byte[] buffer, int offset, int length, long position) throws IOException;
 
     /**
      * Get block size in bytes.
@@ -68,6 +68,6 @@ public interface BlockStorage {
      *
      * @return max amount of blocks.
      */
-    int getBlocksCount();
+    long getBlocksCount();
 
 }

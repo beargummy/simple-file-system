@@ -1,73 +1,109 @@
 package net.beargummy.filesystem;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Objects;
 
 class BitMap implements ByteBufferSerializable {
 
-    private final int size;
-    private int numAllocated;
-    private final BitSet bitSet;
+    private final long size;
+    private long numAllocated;
+    private final BitSet[] bitSets;
 
     BitMap(ByteBuffer byteBuffer) {
-        this.size = byteBuffer.getInt();
-        this.numAllocated = byteBuffer.getInt();
-        this.bitSet = BitSet.valueOf(byteBuffer);
+        this.size = byteBuffer.getLong();
+        this.numAllocated = byteBuffer.getLong();
+        int bitSetsCount = byteBuffer.getInt();
+        this.bitSets = new BitSet[bitSetsCount];
+        for (int i = 0; i < bitSetsCount; i++) {
+            int nextSize = byteBuffer.getInt();
+            byte[] bytes = new byte[nextSize];
+            byteBuffer.get(bytes);
+            bitSets[i] = BitSet.valueOf(bytes);
+        }
     }
 
-    BitMap(int size) {
+    BitMap(long size) {
         this.size = size;
         this.numAllocated = 0;
-        this.bitSet = new BitSet(size);
+        int bitSetsNeeded = getBucket(size) + 1;
+        this.bitSets = new BitSet[bitSetsNeeded];
+        for (int i = 0; i < bitSetsNeeded; i++) {
+            int currentSize = (i + 1 == bitSetsNeeded) ? getInternalIndex(size) : Integer.MAX_VALUE;
+            this.bitSets[i] = new BitSet(currentSize);
+        }
     }
 
-    int size() {
+    long size() {
         return size;
     }
 
-    int allocate() {
+    long allocate() {
         if (numFree() == 0) {
             return -1;
         }
-        int index = bitSet.nextClearBit(0);
-        if (index >= 0) {
-            bitSet.set(index);
-            numAllocated += 1;
+        for (int i = 0, bitSetsLength = bitSets.length; i < bitSetsLength; i++) {
+            BitSet bitSet = bitSets[i];
+            int index = bitSet.nextClearBit(0);
+            if (index >= 0) {
+                bitSet.set(index);
+                numAllocated += 1;
+                return (i + 1) * index;
+            }
         }
-        return index;
+
+        return -1;
     }
 
-    int markAllocated(int index) {
-        if (bitSet.get(index)) {
-            throw new IllegalArgumentException("already allocated: " + index);
+    long markAllocated(long index) {
+        int bucket = getBucket(index);
+        int internalIndex = getInternalIndex(index);
+        if (bitSets[bucket].get(internalIndex)) {
+            return -1;
         }
-        bitSet.set(index);
+        bitSets[bucket].set(internalIndex);
         numAllocated += 1;
         return index;
     }
 
-    void free(int index) {
+    void free(long index) {
         if (index < 0 || index >= size) {
             throw new IndexOutOfBoundsException("index is out of bounds: " + index);
         }
 
-        if (bitSet.get(index) == false)
+        int bucket = getBucket(index);
+        int internalIndex = getInternalIndex(index);
+
+        if (bitSets[bucket].get(internalIndex) == false)
             throw new IllegalArgumentException("already free: " + index);
 
-        bitSet.clear(index);
+        bitSets[bucket].clear(internalIndex);
         numAllocated -= 1;
     }
 
-    int numFree() {
+    private int getInternalIndex(long index) {
+        return (int) (index % Integer.MAX_VALUE);
+    }
+
+    private int getBucket(long index) {
+        return (int) (index / Integer.MAX_VALUE);
+    }
+
+    long numFree() {
         return size - numAllocated;
     }
 
     @Override
     public void writeTo(ByteBuffer byteBuffer) {
-        byteBuffer.putInt(size);
-        byteBuffer.putInt(numAllocated);
-        byteBuffer.put(bitSet.toByteArray());
+        byteBuffer.putLong(size);
+        byteBuffer.putLong(numAllocated);
+        byteBuffer.putInt(bitSets.length);
+        for (BitSet bitSet : bitSets) {
+            byte[] bytes = bitSet.toByteArray();
+            byteBuffer.putInt(bytes.length);
+            byteBuffer.put(bytes);
+        }
     }
 
     @Override
@@ -77,12 +113,14 @@ class BitMap implements ByteBufferSerializable {
         BitMap bitMap = (BitMap) o;
         return size == bitMap.size &&
                 numAllocated == bitMap.numAllocated &&
-                Objects.equals(bitSet, bitMap.bitSet);
+                Arrays.equals(bitSets, bitMap.bitSets);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(size, numAllocated, bitSet);
+        int result = Objects.hash(size, numAllocated);
+        result = 31 * result + Arrays.hashCode(bitSets);
+        return result;
     }
 
     @Override
@@ -90,8 +128,7 @@ class BitMap implements ByteBufferSerializable {
         return "BitMap{" +
                 "size=" + size +
                 ", numAllocated=" + numAllocated +
-                ", bitSet=" + bitSet +
+                ", bitSets=" + Arrays.toString(bitSets) +
                 '}';
     }
-
 }

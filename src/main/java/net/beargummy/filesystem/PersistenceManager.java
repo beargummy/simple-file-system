@@ -8,13 +8,13 @@ class PersistenceManager {
     private final BlockStorage blockStorage;
     private final DefaultFileSystem fileSystem;
 
-    private final int iNodesStartIndex;
-    private final int dataNodesStartIndex;
+    private final long iNodesStartIndex;
+    private final long dataNodesStartIndex;
 
     private final int blockSize;
 
     PersistenceManager(BlockStorage blockStorage, DefaultFileSystem fileSystem,
-                       int iNodesStartIndex, int dataNodesStartIndex) {
+                       long iNodesStartIndex, long dataNodesStartIndex) {
         this.blockStorage = blockStorage;
         this.fileSystem = fileSystem;
         this.iNodesStartIndex = iNodesStartIndex;
@@ -23,10 +23,11 @@ class PersistenceManager {
         this.blockSize = blockStorage.getBlockSize();
     }
 
-    INode readINode(int iNodeIndex) throws IOException {
+    INode readINode(long iNodeIndex) throws IOException {
         int iNodeLength = INode.SIZE;
-        int iNodeBlock = ((iNodeIndex * iNodeLength) / blockSize) + iNodesStartIndex;
-        int iNodePositionInBlock = (iNodeIndex * iNodeLength) % blockSize;
+        int iNodesPerBlock = blockSize / iNodeLength;
+        long iNodeBlock = (iNodeIndex / iNodesPerBlock) + iNodesStartIndex;
+        long iNodePositionInBlock = (iNodeIndex % iNodesPerBlock) * iNodeLength;
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(iNodeLength);
 
@@ -37,9 +38,10 @@ class PersistenceManager {
 
     void writeINode(INode iNode) throws IOException {
         int iNodeLength = INode.SIZE;
-        int iNodeNumber = iNode.getINodeNumber();
-        int iNodeBlock = ((iNodeNumber * iNodeLength) / blockSize) + iNodesStartIndex;
-        int iNodePositionInBlock = (iNodeNumber * iNodeLength) % blockSize;
+        long iNodeIndex = iNode.getINodeNumber();
+        int iNodesPerBlock = blockSize / iNodeLength;
+        long iNodeBlock = (iNodeIndex / iNodesPerBlock) + iNodesStartIndex;
+        long iNodePositionInBlock = (iNodeIndex % iNodesPerBlock) * iNodeLength;
         ByteBuffer byteBuffer = ByteBuffer.allocate(iNodeLength);
         iNode.writeTo(byteBuffer);
         byte[] array = byteBuffer.array();
@@ -50,33 +52,33 @@ class PersistenceManager {
         verifyArguments(buffer, offset, length, position);
 
         int bytesRead = 0;
-        int dataBlocksCount = iNode.getDataBlocksCount();
+        long dataBlocksCount = iNode.getDataBlocksCount();
         if (position / blockSize > dataBlocksCount) {
             return 0;
         }
 
         long iNodeSize = iNode.getSize();
-        int bytesToRead = Math.min((int) (iNodeSize - position), length);
+        int bytesToRead = (int) Math.min(iNodeSize - position, length);
 
         if (bytesToRead == 0) {
             return 0;
         }
 
-        int blocksNeeded = position + bytesToRead > blockSize
-                ? (int) ((position + bytesToRead - 1) / blockSize) + 1
+        long blocksNeeded = position + bytesToRead > blockSize
+                ? ((position + bytesToRead - 1) / blockSize) + 1
                 : 1;
         blocksNeeded = Math.min(blocksNeeded, dataBlocksCount);
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(blockSize);
 
-        int firstBlockOffsetToRead = (int) (position / blockSize);
-        int lastBlockToRead = blocksNeeded - 1;
-        for (int block = firstBlockOffsetToRead; block <= lastBlockToRead; block++) {
-            int currentPosition = block == firstBlockOffsetToRead ? (int) (position % blockSize) : 0;
+        long firstBlockOffsetToRead = (int) (position / blockSize);
+        long lastBlockToRead = blocksNeeded - 1;
+        for (long block = firstBlockOffsetToRead; block <= lastBlockToRead; block++) {
+            long currentPosition = block == firstBlockOffsetToRead ? (int) (position % blockSize) : 0;
             int currentLength = bytesToRead >= blockSize
                     ? blockSize
-                    : Math.min(bytesToRead, blockSize - currentPosition);
-            int currentBlockNumber = iNode.getBlockByIndex(block);
+                    : (int) Math.min(bytesToRead, blockSize - currentPosition);
+            long currentBlockNumber = iNode.getBlockByIndex(block);
 
             int fetchedFromBS = blockStorage.readBlock(dataNodesStartIndex + currentBlockNumber, byteBuffer.clear().array(), 0, currentLength, currentPosition);
             if (fetchedFromBS == -1) {
@@ -92,7 +94,7 @@ class PersistenceManager {
         return bytesRead;
     }
 
-    void writeDataBlock(byte[] data, int offset, int length, int position, int block) throws IOException {
+    void writeDataBlock(byte[] data, int offset, int length, long position, long block) throws IOException {
         verifyArguments(data, offset, length, position);
         if (length + position > blockSize) {
             throw new IllegalArgumentException("Length is greater than block size");
@@ -101,7 +103,7 @@ class PersistenceManager {
         blockStorage.writeBlock(dataNodesStartIndex + block, data, offset, length, position);
     }
 
-    int readDataBlock(byte[] buffer, int offset, int length, int position, int block) throws IOException {
+    int readDataBlock(byte[] buffer, int offset, int length, long position, long block) throws IOException {
         verifyArguments(buffer, offset, length, position);
         if (length + position > blockSize) {
             throw new IllegalArgumentException("Length is greater than block size");
@@ -116,14 +118,14 @@ class PersistenceManager {
         long iNodeSize = iNode.getSize();
         long newSize = Math.max(position + length, iNodeSize);
 
-        int blocksNeeded = (int) Math.ceil(((double) newSize) / blockSize);
-        int firstBlockOffsetToWrite = (int) (position / blockSize);
-        int lastBlockToWrite = blocksNeeded - firstBlockOffsetToWrite - 1;
+        long blocksNeeded = (long) Math.ceil(((double) newSize) / blockSize);
+        long firstBlockOffsetToWrite = position / blockSize;
+        long lastBlockToWrite = blocksNeeded - firstBlockOffsetToWrite - 1;
         lastBlockToWrite = lastBlockToWrite == 0 ? firstBlockOffsetToWrite : lastBlockToWrite;
 
         int bytesWritten = 0;
         ByteBuffer byteBuffer = ByteBuffer.allocate(blockSize);
-        for (int block = firstBlockOffsetToWrite; block <= lastBlockToWrite; block++) {
+        for (long block = firstBlockOffsetToWrite; block <= lastBlockToWrite; block++) {
             int currentBlockPosition = block == firstBlockOffsetToWrite ? (int) (position % blockSize) : 0;
 
             int currentLength;
@@ -132,7 +134,7 @@ class PersistenceManager {
             } else {
                 currentLength = Math.min(blockSize, length) - currentBlockPosition % Math.min(blockSize, length);
             }
-            int currentBlockNumber = iNode.getOrCreateBlockByIndex(block);
+            long currentBlockNumber = iNode.getOrCreateBlockByIndex(block);
             if (currentBlockNumber == -1) {
                 break;
             }
@@ -146,14 +148,14 @@ class PersistenceManager {
         return bytesWritten;
     }
 
-    BitMap readBitMap(int blockNumber) throws IOException {
+    BitMap readBitMap(long blockNumber) throws IOException {
         ByteBuffer byteBuffer = ByteBuffer.allocate(blockSize);
 
         blockStorage.readBlock(blockNumber, byteBuffer.clear().array());
         return new BitMap(byteBuffer);
     }
 
-    void writeBitMap(BitMap bitMap, int blockNumber) throws IOException {
+    void writeBitMap(BitMap bitMap, long blockNumber) throws IOException {
         ByteBuffer byteBuffer = ByteBuffer.allocate(blockSize);
         bitMap.writeTo(byteBuffer);
         blockStorage.writeBlock(blockNumber, byteBuffer.array());

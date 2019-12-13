@@ -39,7 +39,7 @@ class DirectoryData implements ByteBufferSerializable {
         this.size -= 1;
     }
 
-    int getFileINodeNumber(String name) {
+    long getFileINodeNumber(String name) {
         for (DirectoryRecord r : records) {
             if (name.equals(r.name)) {
                 return r.iNodeNumber;

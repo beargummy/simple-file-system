@@ -29,6 +29,18 @@ public interface File {
     /**
      * Reads up to {@code buffer.length} bytes of data from this file into an array of bytes
      * starting from {@code position} in file.
+     * {@code position} should not be greater than file size!
+     *
+     * @param buffer   the buffer into which the data is read.
+     * @param position the start position in the file.
+     * @throws NullPointerException if {@code buffer} is {@code null}.
+     * @throws IOException          if an I/O error occurs.
+     */
+    int read(byte[] buffer, long position) throws IOException;
+
+    /**
+     * Reads up to {@code length} bytes of data from this file into an array of bytes
+     * starting from {@code position} in file.
      * {@code position + length} should not be greater than file size!
      *
      * @param buffer   the buffer into which the data is read.
@@ -63,6 +75,16 @@ public interface File {
      * @throws IOException              if an I/O error occurs.
      */
     int write(byte[] buffer, int offset, int length, long position) throws IOException;
+
+    /**
+     * Writes {@code length} bytes from the specified byte array to this file.
+     *
+     * @param buffer the buffer.
+     * @throws IllegalArgumentException if {@code offset} is negative.
+     * @throws NullPointerException     if {@code buffer} is {@code null}.
+     * @throws IOException              if an I/O error occurs.
+     */
+    int append(byte[] buffer) throws IOException;
 
     /**
      * Writes {@code length} bytes from the specified byte array

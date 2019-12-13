@@ -10,32 +10,32 @@ class SingleFileBlockStorage implements BlockStorage {
 
     private final RandomAccessFile file;
     private final int blockSize;
-    private final int blockCount;
+    private final long blockCount;
 
-    SingleFileBlockStorage(RandomAccessFile file, int blockSize, int blockCount) {
+    SingleFileBlockStorage(RandomAccessFile file, int blockSize, long blockCount) {
         this.file = file;
         this.blockSize = blockSize;
         this.blockCount = blockCount;
     }
 
     @Override
-    public int readBlock(int blockNumber, byte[] buffer) throws IOException {
+    public int readBlock(long blockNumber, byte[] buffer) throws IOException {
         return readBlock(blockNumber, buffer, 0, buffer.length, 0);
     }
 
     @Override
-    public int readBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException {
+    public int readBlock(long blockNumber, byte[] buffer, int offset, int length, long position) throws IOException {
         file.seek(blockNumber * blockSize + position);
         return file.read(buffer, 0, length);
     }
 
     @Override
-    public void writeBlock(int blockNumber, byte[] buffer) throws IOException {
+    public void writeBlock(long blockNumber, byte[] buffer) throws IOException {
         writeBlock(blockNumber, buffer, 0, buffer.length, 0);
     }
 
     @Override
-    public void writeBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException {
+    public void writeBlock(long blockNumber, byte[] buffer, int offset, int length, long position) throws IOException {
         assertDataNonNull(buffer);
         assertBlockNumberValid(blockNumber);
         assertOffsetValid(buffer, offset, length, position);
@@ -44,12 +44,12 @@ class SingleFileBlockStorage implements BlockStorage {
         file.write(buffer, offset, length);
     }
 
-    private void assertBlockNumberValid(int blockNumber) {
+    private void assertBlockNumberValid(long blockNumber) {
         if (blockNumber >= blockCount)
             throw new IllegalArgumentException("Block index is out of bounds");
     }
 
-    private void assertOffsetValid(byte[] buffer, int offset, int length, int position) {
+    private void assertOffsetValid(byte[] buffer, int offset, int length, long position) {
         if (length + position > blockSize)
             throw new IllegalArgumentException("Data is greater than block");
         if (offset < 0)
@@ -74,7 +74,7 @@ class SingleFileBlockStorage implements BlockStorage {
     }
 
     @Override
-    public int getBlocksCount() {
+    public long getBlocksCount() {
         return blockCount;
     }
 }

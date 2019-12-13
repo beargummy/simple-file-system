@@ -18,24 +18,36 @@ class InMemoryBlockStorage implements BlockStorage {
     }
 
     @Override
-    public int readBlock(int blockNumber, byte[] buffer) throws IOException {
+    public int readBlock(long blockNumber, byte[] buffer) throws IOException {
         return readBlock(blockNumber, buffer, 0, blockSize, 0);
     }
 
     @Override
-    public int readBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException {
-        System.arraycopy(storage[blockNumber], position, buffer, offset, length);
+    public int readBlock(long blockNumber, byte[] buffer, int offset, int length, long position) throws IOException {
+        if (blockNumber > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("huge block numbers unsupported");
+        }
+        if (position > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("huge position unsupported");
+        }
+        System.arraycopy(storage[(int) blockNumber], (int) position, buffer, offset, length);
         return length;
     }
 
     @Override
-    public void writeBlock(int blockNumber, byte[] buffer) throws IOException {
+    public void writeBlock(long blockNumber, byte[] buffer) throws IOException {
         writeBlock(blockNumber, buffer, 0, blockSize, 0);
     }
 
     @Override
-    public void writeBlock(int blockNumber, byte[] buffer, int offset, int length, int position) throws IOException {
-        System.arraycopy(buffer, offset, storage[blockNumber], position, length);
+    public void writeBlock(long blockNumber, byte[] buffer, int offset, int length, long position) throws IOException {
+        if (blockNumber > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("huge block numbers unsupported");
+        }
+        if (position > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("huge position unsupported");
+        }
+        System.arraycopy(buffer, offset, storage[(int) blockNumber], (int) position, length);
     }
 
     @Override
@@ -44,7 +56,7 @@ class InMemoryBlockStorage implements BlockStorage {
     }
 
     @Override
-    public int getBlocksCount() {
+    public long getBlocksCount() {
         return blocksCount;
     }
 }

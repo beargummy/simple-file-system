@@ -17,12 +17,12 @@ which contains basic CRUD scenarios.
 
 ## TODOs
 - [x] Basic file operations support: create, write, read, delete.
-- [ ] Append data to file support.
+- [x] Append data to file support.
 - [x] Concurrency control.
 - [x] Multi-block files support.
 - [x] Directories support.
 - [x] Hierarchical INode pointers structure.
-- [ ] Support for files more than 2Gb in size.
+- [x] Support for files more than 2Gb in size.
 - [ ] Fine-grained concurrency control.
 
 ## Acknowledgements

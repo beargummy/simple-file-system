@@ -22,7 +22,7 @@ which contains basic CRUD scenarios.
 - [x] Multi-block files support.
 - [x] Directories support.
 - [x] Hierarchical INode pointers structure.
-- [ ] Support for files more than 2Gb in size.
+- [x] Support for files more than 2Gb in size.
 - [ ] Fine-grained concurrency control.
 
 ## Acknowledgements

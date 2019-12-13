@@ -1,6 +1,7 @@
 package net.beargummy.filesystem;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -30,6 +31,7 @@ public class DefaultFileSystem2GbFileTest {
     }
 
     @Test
+    @Ignore
     public void should_append_more_than_2_gigs() throws IOException {
         File file = defaultFileSystem.createFile("foo");
 

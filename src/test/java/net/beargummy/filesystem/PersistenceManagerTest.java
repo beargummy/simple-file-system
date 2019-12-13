@@ -15,7 +15,7 @@ import static org.mockito.Mockito.*;
 
 public class PersistenceManagerTest {
 
-    public static final int BLOCK_SIZE = 256;
+    public static final int BLOCK_SIZE = 512;
     public static final long I_NODES_START_INDEX = 10;
     public static final long DATA_NODES_START_INDEX = 20;
 

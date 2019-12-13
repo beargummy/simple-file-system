@@ -25,9 +25,9 @@ class PersistenceManager {
 
     INode readINode(long iNodeIndex) throws IOException {
         int iNodeLength = INode.SIZE;
-        // todo: recheck for out-of-block or split-block reads
-        long iNodeBlock = ((iNodeIndex * iNodeLength) / blockSize) + iNodesStartIndex;
-        long iNodePositionInBlock = (iNodeIndex * iNodeLength) % blockSize;
+        int iNodesPerBlock = blockSize / iNodeLength;
+        long iNodeBlock = (iNodeIndex / iNodesPerBlock) + iNodesStartIndex;
+        long iNodePositionInBlock = (iNodeIndex % iNodesPerBlock) * iNodeLength;
 
         ByteBuffer byteBuffer = ByteBuffer.allocate(iNodeLength);
 
@@ -38,10 +38,10 @@ class PersistenceManager {
 
     void writeINode(INode iNode) throws IOException {
         int iNodeLength = INode.SIZE;
-        long iNodeNumber = iNode.getINodeNumber();
-        // todo: recheck for out-of-block or split-block writes
-        long iNodeBlock = ((iNodeNumber * iNodeLength) / blockSize) + iNodesStartIndex;
-        long iNodePositionInBlock = (iNodeNumber * iNodeLength) % blockSize;
+        long iNodeIndex = iNode.getINodeNumber();
+        int iNodesPerBlock = blockSize / iNodeLength;
+        long iNodeBlock = (iNodeIndex / iNodesPerBlock) + iNodesStartIndex;
+        long iNodePositionInBlock = (iNodeIndex % iNodesPerBlock) * iNodeLength;
         ByteBuffer byteBuffer = ByteBuffer.allocate(iNodeLength);
         iNode.writeTo(byteBuffer);
         byte[] array = byteBuffer.array();

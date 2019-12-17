@@ -8,7 +8,7 @@ import java.io.IOException;
  * Supports methods to access it's content.
  * For a file management {@link FileSystem} should be used instead.
  */
-public interface File {
+public interface File extends AutoCloseable {
 
     /**
      * Get file name.
@@ -101,9 +101,19 @@ public interface File {
 
     /**
      * Get file size in bytes.
+     * Note, data can be stale.
      *
      * @return size of the file data space in bytes
      */
-    long getFileSize();
+    long getFileSize() throws IOException;
 
+    /**
+     * Closes {@code File}.
+     * A closed file cannot perform IO operations.
+     *
+     * @throws IOException if an I/O error occurs.
+     * @throws Exception   if other error occurs.
+     */
+    @Override
+    void close() throws Exception;
 }

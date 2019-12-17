@@ -34,8 +34,8 @@ public class DefaultFileSystemTest {
         File file = defaultFileSystem.createFile("foo");
         assertThat(file)
                 .as("file")
-                .isNotNull()
-                .extracting(File::getFileSize)
+                .isNotNull();
+        assertThat(file.getFileSize())
                 .as("file size")
                 .isEqualTo(0L);
 
@@ -52,10 +52,11 @@ public class DefaultFileSystemTest {
 
     @Test
     public void should_create_file_in_directory() throws IOException {
-        assertThat(defaultFileSystem.createFile("/foo/bar"))
+        File file = defaultFileSystem.createFile("/foo/bar");
+        assertThat(file)
                 .as("file")
-                .isNotNull()
-                .extracting(File::getFileSize)
+                .isNotNull();
+        assertThat(file.getFileSize())
                 .as("file size")
                 .isEqualTo(0L);
 
@@ -320,5 +321,29 @@ public class DefaultFileSystemTest {
         assertThat(file.getFileSize())
                 .as("file size")
                 .isEqualTo((long) data.length);
+    }
+
+    @Test
+    public void no_interactions_after_close() throws Exception {
+        File file = defaultFileSystem.createFile("foo");
+        defaultFileSystem.close();
+
+        assertThatThrownBy(() -> defaultFileSystem.deleteFile("foo"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("File system closed");
+        assertThatThrownBy(() -> defaultFileSystem.createFile("bar"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("File system closed");
+        assertThatThrownBy(() -> file.append(new byte[16]))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("File system closed");
+        assertThatThrownBy(() -> file.getFileSize())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("File system closed");
+
+file.close();
+        assertThatThrownBy(() -> file.getFileSize())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("File closed");
     }
 }

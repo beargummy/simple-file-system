@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -33,6 +35,8 @@ class DefaultFileSystem implements FileSystem {
 
     private Directory rootDirectory;
 
+    private AtomicBoolean closed;
+
     DefaultFileSystem(BlockStorage blockStorage) {
         this(1, blockStorage);
     }
@@ -56,9 +60,11 @@ class DefaultFileSystem implements FileSystem {
         this.lock = new ReentrantReadWriteLock();
 
         this.persistenceManager = new PersistenceManager(blockStorage, this, iNodesStartIndex, dataNodesStartIndex);
+        this.closed = new AtomicBoolean(false);
     }
 
     void initFileSystem() throws IOException {
+        assertNotClosed();
         lock.writeLock().lock();
         try {
             indexNodeBitMap = new BitMap(numINodes);
@@ -77,6 +83,7 @@ class DefaultFileSystem implements FileSystem {
     }
 
     void restoreFileSystem() throws IOException {
+        assertNotClosed();
         lock.readLock().lock();
         try {
             indexNodeBitMap = persistenceManager.readBitMap(I_NODE_BIT_MAP_BLOCK_NUMBER);
@@ -90,10 +97,8 @@ class DefaultFileSystem implements FileSystem {
 
     @Override
     public File createFile(String name) throws IOException {
-        assertValidFileName(name);
-
-        lock.writeLock().lock();
-        try {
+        return runWithLock(lock.writeLock(), () -> {
+            assertValidFileName(name);
             List<String> pathParts = parsePath(name);
             String fileName = pathParts.remove(pathParts.size() - 1);
 
@@ -111,9 +116,7 @@ class DefaultFileSystem implements FileSystem {
             current.addFile(fileName, fileINode);
 
             return new DefaultFile(this, fileName, fileINode);
-        } finally {
-            lock.writeLock().unlock();
-        }
+        });
     }
 
     private List<String> parsePath(String name) {
@@ -148,10 +151,8 @@ class DefaultFileSystem implements FileSystem {
 
     @Override
     public File openFile(String name) throws IOException {
-        assertValidFileName(name);
-
-        lock.readLock().lock();
-        try {
+        return runWithLock(lock.readLock(), () -> {
+            assertValidFileName(name);
             List<String> pathParts = parsePath(name);
             String fileName = pathParts.remove(pathParts.size() - 1);
 
@@ -166,9 +167,7 @@ class DefaultFileSystem implements FileSystem {
                 throw new IllegalArgumentException("File is a directory: " + name);
             }
             return new DefaultFile(this, fileName, fileINode);
-        } finally {
-            lock.readLock().unlock();
-        }
+        });
     }
 
     private Directory getLastDirectory(List<String> pathParts) throws IOException {
@@ -186,10 +185,8 @@ class DefaultFileSystem implements FileSystem {
 
     @Override
     public void deleteFile(String name) throws IOException {
-        assertValidFileName(name);
-
-        lock.writeLock().lock();
-        try {
+        runWithLock(lock.writeLock(), () -> {
+            assertValidFileName(name);
             List<String> pathParts = parsePath(name);
             String fileName = pathParts.remove(pathParts.size() - 1);
 
@@ -217,10 +214,7 @@ class DefaultFileSystem implements FileSystem {
             writeBitMap(indexNodeBitMap, I_NODE_BIT_MAP_BLOCK_NUMBER);
 
             current.deleteFile(fileName);
-
-        } finally {
-            lock.writeLock().unlock();
-        }
+        });
     }
 
     private void assertValidFileName(String name) {
@@ -247,12 +241,7 @@ class DefaultFileSystem implements FileSystem {
     }
 
     int readINodeData(INode iNode, byte[] buffer, int offset, int length, long position) throws IOException {
-        lock.readLock().lock();
-        try {
-            return persistenceManager.readINodeData(iNode, buffer, offset, length, position);
-        } finally {
-            lock.readLock().unlock();
-        }
+        return runWithLock(lock.readLock(), () -> persistenceManager.readINodeData(iNode, buffer, offset, length, position));
     }
 
     int writeINodeData(INode iNode, byte[] data) throws IOException {
@@ -260,8 +249,7 @@ class DefaultFileSystem implements FileSystem {
     }
 
     int writeINodeData(INode iNode, byte[] data, int offset, int length, long position) throws IOException {
-        lock.writeLock().lock();
-        try {
+        return runWithLock(lock.writeLock(), () -> {
             long oldSize = iNode.getSize();
             int bytesWritten = persistenceManager.writeINodeData(iNode, data, offset, length, position);
             long newSize = iNode.getSize();
@@ -269,9 +257,7 @@ class DefaultFileSystem implements FileSystem {
                 persistenceManager.writeINode(iNode);
             }
             return bytesWritten;
-        } finally {
-            lock.writeLock().unlock();
-        }
+        });
     }
 
     int readDataBlock(byte[] buffer, int offset, int length, long position, long block) throws IOException {
@@ -292,5 +278,53 @@ class DefaultFileSystem implements FileSystem {
 
     long allocateDNode() {
         return dataNodeBitMap.allocate();
+    }
+
+    INode readINode(long iNodeIndex) throws IOException {
+        return runWithLock(lock.readLock(), () -> persistenceManager.readINode(iNodeIndex));
+    }
+
+    private <T> T runWithLock(Lock lock, Command<T> command) throws IOException {
+        assertNotClosed();
+        lock.lock();
+        try {
+            return command.execute();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void runWithLock(Lock lock, VoidCommand callable) throws IOException {
+        runWithLock(lock, () -> {
+            callable.execute();
+            return null;
+        });
+    }
+
+    @Override
+    public void close() throws Exception {
+        lock.writeLock().lock();
+        try {
+            if (!closed.compareAndSet(false, true)) {
+                return;
+            }
+            blockStorage.close();
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    private void assertNotClosed() {
+        if (closed.get()) {
+            throw new IllegalStateException("File system closed");
+        }
+    }
+
+    private interface Command<T> {
+        T execute() throws IOException;
+    }
+
+    private interface VoidCommand {
+        void execute() throws IOException;
     }
 }

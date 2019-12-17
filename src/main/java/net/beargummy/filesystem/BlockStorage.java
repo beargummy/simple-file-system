@@ -2,7 +2,7 @@ package net.beargummy.filesystem;
 
 import java.io.IOException;
 
-public interface BlockStorage {
+public interface BlockStorage extends AutoCloseable {
 
     /**
      * Reads up to {@code buffer.length} bytes of block buffer into an array of bytes.
@@ -70,4 +70,12 @@ public interface BlockStorage {
      */
     long getBlocksCount();
 
+    /**
+     * Closes {@code BlockStorage} and all closes/frees used resources.
+     *
+     * @throws IOException if an I/O error occurs.
+     * @throws Exception   if other error occurs.
+     */
+    @Override
+    void close() throws Exception;
 }

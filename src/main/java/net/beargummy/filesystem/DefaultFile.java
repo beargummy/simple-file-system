@@ -1,17 +1,20 @@
 package net.beargummy.filesystem;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 class DefaultFile implements File {
 
     private final DefaultFileSystem fs;
     private INode iNode;
     private String name;
+    private AtomicBoolean closed;
 
     public DefaultFile(DefaultFileSystem fs, String name, INode iNode) {
         this.fs = fs;
         this.name = name;
         this.iNode = iNode;
+        this.closed = new AtomicBoolean(false);
     }
 
     @Override
@@ -33,6 +36,7 @@ class DefaultFile implements File {
 
     @Override
     public int read(byte[] buffer, int offset, int length, long position) throws IOException {
+        assertNotClosed();
         assertBufferNonNull(buffer);
         assertPositiveOffset(offset);
         assertPositivePosition(position);
@@ -54,6 +58,7 @@ class DefaultFile implements File {
 
     @Override
     public int write(byte[] buffer, int offset, int length, long position) throws IOException {
+        assertNotClosed();
         assertBufferNonNull(buffer);
         assertPositiveOffset(offset);
         assertValidLength(buffer, offset, length);
@@ -70,6 +75,7 @@ class DefaultFile implements File {
 
     @Override
     public int append(byte[] buffer, int offset, int length) throws IOException {
+        assertNotClosed();
         assertBufferNonNull(buffer);
         assertPositiveOffset(offset);
         assertValidLength(buffer, offset, length);
@@ -104,9 +110,19 @@ class DefaultFile implements File {
             throw new IllegalArgumentException("Position should be less or equal to file size");
     }
 
-    @Override
-    public long getFileSize() {
-        return iNode.getSize();
+    private void assertNotClosed() {
+        if (closed.get())
+            throw new IllegalStateException("File closed");
     }
 
+    @Override
+    public long getFileSize() throws IOException {
+        assertNotClosed();
+        return fs.readINode(iNode.getINodeNumber()).getSize();
+    }
+
+    @Override
+    public void close() {
+        closed.compareAndSet(false, true);
+    }
 }

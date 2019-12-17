@@ -104,7 +104,8 @@ class INode implements ByteBufferSerializable {
         fs.readDataBlock(buffer.array(), 0, 8, indirectDataBlockOffset, doubleIndirectDataBlockNode);
         long allocatedIndirectBlock = buffer.getLong();
         long position = (currentIndex % getInodesPerBlock()) * 8;
-        fs.readDataBlock(buffer.clear().array(), 0, 8, position, allocatedIndirectBlock);
+        buffer.clear();
+        fs.readDataBlock(buffer.array(), 0, 8, position, allocatedIndirectBlock);
 
         return buffer.getLong();
     }

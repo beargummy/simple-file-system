@@ -24,7 +24,8 @@ public class DirectoryDataSerializationTest {
 
         original.writeTo(byteBuffer);
 
-        DirectoryData restored = new DirectoryData(byteBuffer.flip());
+        byteBuffer.flip();
+        DirectoryData restored = new DirectoryData(byteBuffer);
 
         assertThat(restored)
                 .as("restored")

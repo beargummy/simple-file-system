@@ -80,7 +80,8 @@ class PersistenceManager {
                     : (int) Math.min(bytesToRead, blockSize - currentPosition);
             long currentBlockNumber = iNode.getBlockByIndex(block);
 
-            int fetchedFromBS = blockStorage.readBlock(dataNodesStartIndex + currentBlockNumber, byteBuffer.clear().array(), 0, currentLength, currentPosition);
+            byteBuffer.clear();
+            int fetchedFromBS = blockStorage.readBlock(dataNodesStartIndex + currentBlockNumber, byteBuffer.array(), 0, currentLength, currentPosition);
             if (fetchedFromBS == -1) {
                 return bytesRead;
             }
@@ -141,8 +142,10 @@ class PersistenceManager {
                 break;
             }
 
-            byteBuffer.clear().put(data, bytesWritten + offset, currentLength);
-            blockStorage.writeBlock(dataNodesStartIndex + currentBlockNumber, byteBuffer.flip().array(), 0, currentLength, currentBlockPosition);
+            byteBuffer.clear();
+            byteBuffer.put(data, bytesWritten + offset, currentLength);
+            byteBuffer.flip();
+            blockStorage.writeBlock(dataNodesStartIndex + currentBlockNumber, byteBuffer.array(), 0, currentLength, currentBlockPosition);
             bytesWritten += currentLength;
         }
 
@@ -153,7 +156,8 @@ class PersistenceManager {
     BitMap readBitMap(long blockNumber) throws IOException {
         ByteBuffer byteBuffer = ByteBuffer.allocate(blockSize);
 
-        blockStorage.readBlock(blockNumber, byteBuffer.clear().array());
+        byteBuffer.clear();
+        blockStorage.readBlock(blockNumber, byteBuffer.array());
         return new BitMap(byteBuffer);
     }
 

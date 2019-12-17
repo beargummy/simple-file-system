@@ -16,7 +16,8 @@ public class DirectoryRecordSerializationTest {
 
         original.writeTo(byteBuffer);
 
-        DirectoryRecord restored = new DirectoryRecord(byteBuffer.flip());
+        byteBuffer.flip();
+        DirectoryRecord restored = new DirectoryRecord(byteBuffer);
 
         assertThat(restored)
                 .as("restored")

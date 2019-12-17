@@ -21,8 +21,9 @@ public interface File extends AutoCloseable {
      * Reads up to {@code buffer.length} bytes of data from this file into an array of bytes.
      *
      * @param buffer the buffer into which the data is read.
-     * @throws NullPointerException if {@code buffer} is {@code null}.
-     * @throws IOException          if an I/O error occurs.
+     * @throws NullPointerException  if {@code buffer} is {@code null}.
+     * @throws IllegalStateException if file or related {@link FileSystem} is closed
+     * @throws IOException           if an I/O error occurs.
      */
     int read(byte[] buffer) throws IOException;
 
@@ -33,8 +34,9 @@ public interface File extends AutoCloseable {
      *
      * @param buffer   the buffer into which the data is read.
      * @param position the start position in the file.
-     * @throws NullPointerException if {@code buffer} is {@code null}.
-     * @throws IOException          if an I/O error occurs.
+     * @throws NullPointerException  if {@code buffer} is {@code null}.
+     * @throws IllegalStateException if file or related {@link FileSystem} is closed
+     * @throws IOException           if an I/O error occurs.
      */
     int read(byte[] buffer, long position) throws IOException;
 
@@ -49,6 +51,7 @@ public interface File extends AutoCloseable {
      * @param position the start position in the file.
      * @throws IllegalArgumentException if {@code offset} is negative or greater than file size.
      * @throws NullPointerException     if {@code buffer} is {@code null}.
+     * @throws IllegalStateException    if file or related {@link FileSystem} is closed
      * @throws IOException              if an I/O error occurs.
      */
     int read(byte[] buffer, int offset, int length, long position) throws IOException;
@@ -57,8 +60,9 @@ public interface File extends AutoCloseable {
      * Writes {@code buffer.length} bytes from the specified byte array to this file.
      *
      * @param buffer the buffer.
-     * @throws NullPointerException if {@code buffer} is {@code null}.
-     * @throws IOException          if an I/O error occurs.
+     * @throws NullPointerException  if {@code buffer} is {@code null}.
+     * @throws IllegalStateException if file or related {@link FileSystem} is closed
+     * @throws IOException           if an I/O error occurs.
      */
     int write(byte[] buffer) throws IOException;
 
@@ -72,6 +76,7 @@ public interface File extends AutoCloseable {
      * @param position the start position in the file.
      * @throws IllegalArgumentException if {@code offset} is negative.
      * @throws NullPointerException     if {@code buffer} is {@code null}.
+     * @throws IllegalStateException    if file or related {@link FileSystem} is closed
      * @throws IOException              if an I/O error occurs.
      */
     int write(byte[] buffer, int offset, int length, long position) throws IOException;
@@ -82,6 +87,7 @@ public interface File extends AutoCloseable {
      * @param buffer the buffer.
      * @throws IllegalArgumentException if {@code offset} is negative.
      * @throws NullPointerException     if {@code buffer} is {@code null}.
+     * @throws IllegalStateException    if file or related {@link FileSystem} is closed
      * @throws IOException              if an I/O error occurs.
      */
     int append(byte[] buffer) throws IOException;
@@ -95,6 +101,7 @@ public interface File extends AutoCloseable {
      * @param length amount of bytes to write from {@code buffer}
      * @throws IllegalArgumentException if {@code offset} is negative.
      * @throws NullPointerException     if {@code buffer} is {@code null}.
+     * @throws IllegalStateException    if file or related {@link FileSystem} is closed
      * @throws IOException              if an I/O error occurs.
      */
     int append(byte[] buffer, int offset, int length) throws IOException;
@@ -104,6 +111,8 @@ public interface File extends AutoCloseable {
      * Note, data can be stale.
      *
      * @return size of the file data space in bytes
+     * @throws IllegalStateException if file or related {@link FileSystem} is closed
+     * @throws IOException           if an I/O error occurs.
      */
     long getFileSize() throws IOException;
 

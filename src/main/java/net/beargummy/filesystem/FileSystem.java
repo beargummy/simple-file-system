@@ -18,6 +18,7 @@ public interface FileSystem extends AutoCloseable {
      * @throws NullPointerException     if file name is {@code null}.
      * @throws IllegalArgumentException if file name is empty string.
      * @throws FileAlreadyExists        if file already exists.
+     * @throws IllegalStateException    if FileSystem is closed
      * @throws IOException              if an I/O error occurs.
      */
     File createFile(String name) throws IOException;
@@ -32,6 +33,7 @@ public interface FileSystem extends AutoCloseable {
      * @throws NullPointerException     if file name is {@code null}.
      * @throws IllegalArgumentException if file name is empty string.
      * @throws FileNotFoundException    if the file does not exist.
+     * @throws IllegalStateException    if FileSystem is closed
      * @throws IOException              if an I/O error occurs.
      */
     File openFile(String name) throws IOException;
@@ -46,6 +48,7 @@ public interface FileSystem extends AutoCloseable {
      * @throws NullPointerException     if file name is {@code null}.
      * @throws IllegalArgumentException if file name is empty string.
      * @throws FileNotFoundException    if the file does not exist.
+     * @throws IllegalStateException    if FileSystem is closed
      * @throws IOException              if an I/O error occurs.
      */
     void deleteFile(String name) throws IOException;

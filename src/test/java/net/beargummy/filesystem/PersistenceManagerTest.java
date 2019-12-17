@@ -69,7 +69,7 @@ public class PersistenceManagerTest {
     @Test
     public void should_partially_rewrite_first_block() throws IOException {
         persistenceManager.writeINodeData(
-                new INode(fs, 1, FileType.FILE, 32, Collections.singletonList(0L)),
+                new INode(fs, 1, FileType.FILE, 64, Collections.singletonList(0L)),
                 new byte[16], 0, 16, 8L
         );
 
@@ -84,6 +84,38 @@ public class PersistenceManagerTest {
         );
 
         verify(blockStorage, times(1)).writeBlock(eq(DATA_NODES_START_INDEX + 1), any(byte[].class), eq(0), eq(16), eq(8L));
+    }
+
+    @Test
+    public void should_partially_rewrite_two_blocks_split_write() throws IOException {
+        persistenceManager.writeINodeData(
+                new INode(fs, 1, FileType.FILE, (BLOCK_SIZE * 2) - 32, Arrays.asList(0L, 1L)),
+                new byte[111], 0, 111, BLOCK_SIZE - 77
+        );
+
+        verify(blockStorage, times(1))
+                .writeBlock(eq(DATA_NODES_START_INDEX), any(byte[].class), eq(0), eq(77), eq(BLOCK_SIZE - 77L));
+        verify(blockStorage, times(1))
+                .writeBlock(eq(DATA_NODES_START_INDEX + 1), any(byte[].class), eq(0), eq(111 - 77), eq(0L));
+    }
+
+    @Test
+    public void should_partially_rewrite_three_blocks() throws IOException {
+        persistenceManager.writeINodeData(
+                new INode(fs, 1, FileType.FILE, (BLOCK_SIZE * 2) - 32, Arrays.asList(0L, 1L, 2L)),
+                new byte[BLOCK_SIZE * 3], 0, 137 + BLOCK_SIZE + 98, BLOCK_SIZE - 137
+        );
+
+        inOrder(blockStorage);
+        verify(blockStorage, times(1)).getBlockSize();
+        verify(blockStorage, times(1))
+                .writeBlock(eq(DATA_NODES_START_INDEX), any(byte[].class), eq(0), eq(137), eq(BLOCK_SIZE - 137L));
+        verify(blockStorage, times(1))
+                .writeBlock(eq(DATA_NODES_START_INDEX + 1), any(byte[].class), eq(0), eq(BLOCK_SIZE), eq(0L));
+        verify(blockStorage, times(1))
+                .writeBlock(eq(DATA_NODES_START_INDEX + 2), any(byte[].class), eq(0), eq(98), eq(0L));
+
+        verifyNoMoreInteractions(blockStorage);
     }
 
     @Test
@@ -120,11 +152,11 @@ public class PersistenceManagerTest {
     public void should_append_to_current_and_next_blocks() throws IOException {
         persistenceManager.writeINodeData(
                 new INode(fs, 1, FileType.FILE, BLOCK_SIZE - 8, Collections.singletonList(0L)),
-                new byte[16], 0, 16, BLOCK_SIZE - 8
+                new byte[77], 0, 77, BLOCK_SIZE - 8
         );
 
         verify(blockStorage, times(1)).writeBlock(eq(DATA_NODES_START_INDEX), any(byte[].class), eq(0), eq(8), eq(BLOCK_SIZE - 8L));
-        verify(blockStorage, times(1)).writeBlock(eq(DATA_NODES_START_INDEX + 1), any(byte[].class), eq(0), eq(8), eq(0L));
+        verify(blockStorage, times(1)).writeBlock(eq(DATA_NODES_START_INDEX + 1), any(byte[].class), eq(0), eq(77 - 8), eq(0L));
     }
 
     @Test

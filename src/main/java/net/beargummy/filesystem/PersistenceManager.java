@@ -129,8 +129,10 @@ class PersistenceManager {
             int currentBlockPosition = block == firstBlockOffsetToWrite ? (int) (position % blockSize) : 0;
 
             int currentLength;
-            if (block == lastBlockToWrite) {
-                currentLength = Math.min(length - bytesWritten, blockSize);
+            if (block == firstBlockOffsetToWrite) {
+                currentLength = Math.min(length, blockSize - currentBlockPosition);
+            } else if (block == lastBlockToWrite) {
+                currentLength = Math.min(length - bytesWritten, blockSize - currentBlockPosition);
             } else {
                 currentLength = Math.min(blockSize, length) - currentBlockPosition % Math.min(blockSize, length);
             }

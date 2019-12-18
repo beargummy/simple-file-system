@@ -47,7 +47,8 @@ public class DefaultFileSystem2GbFileTest {
                     .as("bytes written on %d Mb", i)
                     .isEqualTo((int) megabyte);
 
-            int readBytes = file.read(readBuffer.clear().array(), bytesWritten - megabyte);
+            readBuffer.clear();
+            int readBytes = file.read(readBuffer.array(), bytesWritten - megabyte);
             assertThat(readBytes)
                     .as("bytes read back on %d Mb", i)
                     .isEqualTo((int) megabyte);
@@ -65,7 +66,8 @@ public class DefaultFileSystem2GbFileTest {
                 .as("file size")
                 .isEqualTo(bytesWritten);
 
-        byte[] bytes = readBuffer.clear().array();
+        readBuffer.clear();
+        byte[] bytes = readBuffer.array();
 
         int readBytes = file.read(bytes, 3 * gigabyte - 10 * megabyte);
         assertThat(readBytes)

@@ -22,7 +22,8 @@ public class BitMapSerializationTest {
 
         original.writeTo(byteBuffer);
 
-        BitMap restored = new BitMap(byteBuffer.flip());
+        byteBuffer.flip();
+        BitMap restored = new BitMap(byteBuffer);
 
         assertThat(restored)
                 .as("restored")

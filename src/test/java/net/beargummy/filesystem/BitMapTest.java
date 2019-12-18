@@ -40,7 +40,8 @@ public class BitMapTest {
         ByteBuffer byteBuffer = ByteBuffer.allocate(256);
         bitMap.writeTo(byteBuffer);
 
-        BitMap deserialized = new BitMap(byteBuffer.rewind());
+        byteBuffer.rewind();
+        BitMap deserialized = new BitMap(byteBuffer);
 
         assertThat(deserialized)
                 .as("deserialized")

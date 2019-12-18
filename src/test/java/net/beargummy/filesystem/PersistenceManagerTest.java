@@ -310,7 +310,8 @@ public class PersistenceManagerTest {
         ByteBuffer byteBuffer = ByteBuffer.allocate(INode.SIZE);
         INode iNode = new INode(fs, 1, FileType.FILE, 32L, Collections.singletonList(0L));
         iNode.writeTo(byteBuffer);
-        byte[] array = byteBuffer.flip().array();
+        byteBuffer.flip();
+        byte[] array = byteBuffer.array();
 
         when(blockStorage.readBlock(anyLong(), any(byte[].class), anyInt(), anyInt(), anyLong()))
                 .thenAnswer(inv -> {

@@ -221,8 +221,12 @@ class DefaultFileSystem implements FileSystem {
         if (name == null) {
             throw new NullPointerException("File name is null");
         }
-        if (name.isBlank()) {
+        String trimmed = name.trim();
+        if (trimmed.isEmpty()) {
             throw new IllegalArgumentException("File name is empty");
+        }
+        if (!trimmed.equals(name)) {
+            throw new IllegalArgumentException("File cannot start or end with whitespace");
         }
         if (name.contains(pathSeparator + pathSeparator)) {
             throw new IllegalArgumentException("Double path separator in name");
@@ -230,9 +234,7 @@ class DefaultFileSystem implements FileSystem {
         int lastIndexOf = name.lastIndexOf(pathSeparator);
         if (lastIndexOf != -1) {
             String actualName = name.substring(lastIndexOf + 1);
-            if (actualName.isBlank()) {
-                throw new IllegalArgumentException("File name is empty");
-            }
+            assertValidFileName(actualName);
         }
     }
 
